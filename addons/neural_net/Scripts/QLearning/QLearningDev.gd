@@ -1,4 +1,4 @@
-class_name QLearning
+class_name QLearningDev
 
 # Observation Spaces are the possible states the agent can be in
 # Action Spaces are the possible actions the agent can take
