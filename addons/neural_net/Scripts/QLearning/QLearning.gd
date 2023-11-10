@@ -22,7 +22,6 @@ var previous_state: int = -100# To be used in the algorithms
 var current_state: int # To be swapped for the previous state at the end of each prediction
 var previous_action: int # To b usd in the algorithm
 
-var done: bool = false
 var is_learning: bool = true
 var print_debug_info: bool = false
 
@@ -30,8 +29,8 @@ func _init(n_observations: int, n_action_spaces: int, _is_learning: bool = true)
 	observation_space = n_observations
 	action_spaces = n_action_spaces
 	is_learning = _is_learning
-	
 	QTable = Matrix.new(observation_space, action_spaces)
+	#QTable.fill()
 
 func predict(current_state: int, reward_of_previous_state: float) -> int:
 	if is_learning:
@@ -63,3 +62,18 @@ func predict(current_state: int, reward_of_previous_state: float) -> int:
 	
 	steps_completed += 1
 	return action_to_take
+
+
+func save(path):
+	var file = FileAccess.open(path, FileAccess.WRITE)
+	var data = QTable.save()
+	file.store_var(data)
+	file.close()
+
+func load(path):
+	var file = FileAccess.open(path, FileAccess.READ)
+	var data = file.get_var()
+	QTable.data = data
+	is_learning = false
+	exploration_probability = 0.5
+	file.close()
