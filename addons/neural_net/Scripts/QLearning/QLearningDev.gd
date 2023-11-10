@@ -33,13 +33,24 @@ func _init(n_observations: int, n_action_spaces: int, _is_learning: bool = true)
 
     QTable = {}
 
+func max_from_row(dictionary: Dictionary, row_key: Array) -> float:
+    var max_value: float = -INFINITY
+
+    for key in dictionary.keys():
+        if key[0] == row_key:
+            var value = dictionary[key]
+            if value > max_value:
+                max_value = value
+
+    return max_value
+
 func predict(current_state: Array, reward_of_previous_state: float) -> int:
     if is_learning:
         if previous_state.size() > 0:
             var prev_key = [previous_state, previous_action]
             if QTable.has(prev_key):
                 QTable[prev_key] = (1 - learning_rate) * QTable[prev_key] + \
-                learning_rate * (reward_of_previous_state + discounted_factor * QTable[max_from_row(current_state)])
+                learning_rate * (reward_of_previous_state + discounted_factor * max_from_row(QTable, current_state))
             else:
                 QTable[prev_key] = reward_of_previous_state
 
