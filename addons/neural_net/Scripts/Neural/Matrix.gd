@@ -169,3 +169,13 @@ func index_of_max_from_row(_row: int) -> int:
 
 func max_from_row(_row: int) -> float:
 	return data[_row].max()
+# Save function
+func save() -> Array:
+	var data_to_save = data
+	return data_to_save
+
+# Load function
+static func load(data: Array) -> Matrix:
+	var matrix = Matrix.from_array(data)
+	return matrix
+
