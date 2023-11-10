@@ -5,8 +5,8 @@ class_name QLearningDev
 var observation_space: int
 var action_spaces: int
 
-# The table that contains the value for each cell in the QLearning algorithm
-var QTable: Dictionary
+# The neural network for Q-learning
+var q_network: NeuralNetworkAdvanced
 
 # Hyper-parameters
 var exploration_probability: float = 1.0
@@ -18,65 +18,75 @@ var decay_per_steps: int = 100
 var steps_completed: int = 0
 
 # States
-var previous_state: Array = []
-var current_state: Array = []
+var previous_state: int = -100
+var current_state: int
 var previous_action: int
 
 var done: bool = false
 var is_learning: bool = true
 var print_debug_info: bool = false
 
+# List to store experiences for training the neural network
+var experience_buffer: Array = []
+
 func _init(n_observations: int, n_action_spaces: int, _is_learning: bool = true) -> void:
     observation_space = n_observations
     action_spaces = n_action_spaces
     is_learning = _is_learning
+    
+    q_network = NeuralNetworkAdvanced.new()
+    q_network.add_layer(nodes: observation_space, activation: ACTIVATIONS.RELU)  # Input layer
+    q_network.add_layer(nodes: 64, activation: ACTIVATIONS.RELU)  # Hidden layer
+    q_network.add_layer(nodes: action_spaces)  # Output layer
 
-    QTable = {}
+func add_experience(state: int, action: int, reward: float, next_state: int) -> void:
+    experience_buffer.append({"state": state, "action": action, "reward": reward, "next_state": next_state})
 
-func max_from_row(dictionary: Dictionary, row_key: Array) -> float:
-    var max_value: float = -INFINITY
+func train_neural_network() -> void:
+    for experience in experience_buffer:
+        var state = experience["state"]
+        var action = experience["action"]
+        var reward = experience["reward"]
+        var next_state = experience["next_state"]
 
-    for key in dictionary.keys():
-        if key[0] == row_key:
-            var value = dictionary[key]
-            if value > max_value:
-                max_value = value
+        var input_array = Matrix.new(state, 1)  # Adjust based on your Matrix class
+        var next_input_array = Matrix.new(next_state, 1)  # Adjust based on your Matrix class
 
-    return max_value
+        var q_values = q_network.predict(input_array)
+        var target_q_value = reward + discounted_factor * q_network.predict(next_input_array).max_from_row(0)
+        q_values[action] = (1 - learning_rate) * q_values[action] + learning_rate * target_q_value
 
-func predict(current_state: Array, reward_of_previous_state: float) -> int:
+        q_network.train(input_array, q_values)
+
+    experience_buffer.clear()
+
+func predict(current_state: int, reward_of_previous_state: float) -> int:
     if is_learning:
-        if previous_state.size() > 0:
-            var prev_key = [previous_state, previous_action]
-            if QTable.has(prev_key):
-                QTable[prev_key] = (1 - learning_rate) * QTable[prev_key] + \
-                learning_rate * (reward_of_previous_state + discounted_factor * max_from_row(QTable, current_state))
-            else:
-                QTable[prev_key] = reward_of_previous_state
+        if previous_state != -100:
+            add_experience(previous_state, previous_action, reward_of_previous_state, current_state)
+            train_neural_network()
 
     var action_to_take: int
-
+    
     if randf() < exploration_probability and is_learning:
         action_to_take = randi_range(0, action_spaces - 1)
     else:
-        var current_state_key = [current_state, action_to_take]
-        if QTable.has(current_state_key):
-            action_to_take = QTable[current_state_key]
-        else:
-            action_to_take = 0
-
+        var input_array_exploit = Matrix.new(current_state, 1)  # Adjust based on your Matrix class
+        var q_values = q_network.predict(input_array_exploit)
+        action_to_take = q_values.index_of_max_from_row(0)  # Assuming q_values is a column vector
+    
     if is_learning:
         previous_state = current_state
         previous_action = action_to_take
-
+    
         if steps_completed != 0 and steps_completed % decay_per_steps == 0:
             exploration_probability = maxf(min_exploration_probability, exploration_probability - exploration_decreasing_decay)
-
+    
     if print_debug_info and steps_completed % decay_per_steps == 0:
         print("Total steps completed:", steps_completed)
         print("Current exploration probability:", exploration_probability)
-        print("Q-Table data:", QTable)
+        print("Q-Values:", q_values.data)  # Assuming q_values is your Matrix class
         print("-----------------------------------------------------------------------------------------")
-
+    
     steps_completed += 1
     return action_to_take
