@@ -1,3 +1,4 @@
+
 class_name QLearning
 
 # Observation Spaces are the possible states the agent can be in
@@ -14,7 +15,7 @@ var exploration_decreasing_decay: float = 0.01 # The exploartion decreasing deca
 var min_exploration_probability: float = 0.01 # The least value that the exploration_probability can fall to
 var discounted_factor: float = 0.9 # Basically the gamma
 var learning_rate: float = 0.2 # How fast the agent learns
-var decay_per_steps: int = 100
+var decay_per_steps: int = 100 # How many steps until training
 var steps_completed: int = 0
 
 # States
