@@ -36,7 +36,9 @@ var ACTIVATIONS: Dictionary = {
 
 var learning_rate: float = 0.5
 
-var layer_structure: Array[int] = []
+var layer_structure = []
+
+var raycasts: Array[RayCast2D]
 
 func add_layer(nodes: int, activation: Dictionary = ACTIVATIONS.SIGMOID):
 	
@@ -56,6 +58,7 @@ func predict(input_array: Array) -> Array:
 	for layer in network:
 		var product: Matrix = Matrix.dot_product(layer.weights, inputs)
 		var sum: Matrix = Matrix.add(product, layer.bias)
+		#print(layer.activation.function)
 		var map: Matrix = Matrix.map(sum, layer.activation.function)
 		inputs = map
 	return Matrix.to_array(inputs)
@@ -126,47 +129,31 @@ func train(input_array: Array, target_array: Array):
 			network[layer_index].weights = Matrix.add(layer.weights, weight_delta)
 			network[layer_index].bias = Matrix.add(layer.bias, hidden_gradient)
 			
-			
-		
-		
-#		if layer_index == network.size() - 1:
-#			var output_errors: Matrix = Matrix.subtract(targets, layer_outputs)
-#			var gradients: Matrix = Matrix.map(layer_outputs, layer.activation.derivative)
-#			gradients = Matrix.multiply(gradients, output_errors)
-#			gradients = Matrix.scalar(gradients, learning_rate)
 
-#func single_layer_forward_propagation(previous_activations: Matrix, current_weights: Matrix, current_bias: Matrix, activation: Callable) -> Dictionary:
-#	var unactivated: Matrix = Matrix.sum(Matrix.dot_product(current_weights, previous_activations), current_bias)
-#
-#	var return_value: Dictionary = {
-#		"activated": Matrix.map(unactivated, activation),
-#		"unactivated": unactivated
-#	}
-#
-#	return return_value
-#
-#func network_forward_propagation(inputs: Matrix) -> Dictionary:
-#	var memory: Dictionary = {}
-#	var current_activated: Matrix = inputs
-#
-#	for index in range(network.size()):
-#		var layer: Dictionary = network[index]
-#		var layer_index: int = index + 1
-#		var previous_activated: Matrix = current_activated
-#
-#		var activated_unactivated: Dictionary = single_layer_forward_propagation(previous_activated, layer.weights, layer.bias, layer.activation.function)
-#
-#		current_activated = activated_unactivated.activated
-#		var current_unactivated: Matrix = activated_unactivated.unactivated
-#
-#		memory["activated" + str(index)] = previous_activated
-#		memory["unactivated" + str(layer_index)] = current_unactivated
-#
-#	var return_value: Dictionary = {
-#		"current_activated": current_activated,
-#		"memory": memory
-#	}
-#
-#	return return_value
-#
-##func get_cost_value(prediction)
+func get_inputs_from_raycasts() -> Array:
+	assert(raycasts.size() != 0, "Can not get inputs from RayCasts that are not set!")
+	
+	var _input_array: Array[float]
+	
+	for ray in raycasts:
+		if is_instance_valid(ray): _input_array.push_front(get_distance(ray))
+	
+	return _input_array
+
+func get_prediction_from_raycasts(optional_val: Array = []) -> Array:
+	assert(raycasts.size() != 0, "Can not get inputs from RayCasts that are not set!")
+	
+	var _array_ = get_inputs_from_raycasts()
+	_array_.append_array(optional_val)
+	return predict(_array_)
+
+func get_distance(_raycast: RayCast2D):
+	var distance: float = 0.0
+	if _raycast.is_colliding():
+		var origin: Vector2 = _raycast.global_transform.get_origin()
+		var collision: Vector2 = _raycast.get_collision_point()
+		
+		distance = origin.distance_to(collision)
+	else:
+		distance = sqrt((pow(_raycast.target_position.x, 2) + pow(_raycast.target_position.y, 2)))
+	return distance
