@@ -6,80 +6,81 @@ var observation_space: int
 var action_spaces: int
 
 # The table that contains the value for each cell in the QLearning algorithm
-var QTable: Dictionary
+var QTable: Matrix
 
 # Hyper-parameters
-var exploration_probability: float = 1.0
-var exploration_decreasing_decay: float = 0.01
-var min_exploration_probability: float = 0.01
-var discounted_factor: float = 0.9
-var learning_rate: float = 0.2
+var exploration_probability: float = 1.0 # The probability that the agent will either explore or exploit the QTable
+var exploration_decreasing_decay: float = 0.01 # The exploration decreasing decay for exponential decreasing
+var min_exploration_probability: float = 0.01 # The least value that the exploration_probability can fall to
+var discounted_factor: float = 0.9 # Basically the gamma
+var learning_rate: float = 0.2 # How fast the agent learns
 var decay_per_steps: int = 100
 var steps_completed: int = 0
 
 # States
-var previous_state: Array = []  # To be used in the algorithms
-var current_state: Array = []  # To be swapped for the previous state at the end of each prediction
-var previous_action: int  # To be used in the algorithm
+var previous_state: int = -100 # To be used in the algorithms
+var current_states: Array # To store multiple current states
+var previous_action: int # To be used in the algorithm
 
-var done: bool = false
 var is_learning: bool = true
 var print_debug_info: bool = false
 
 func _init(n_observations: int, n_action_spaces: int, _is_learning: bool = true) -> void:
-    observation_space = n_observations
-    action_spaces = n_action_spaces
-    is_learning = _is_learning
+	observation_space = n_observations
+	action_spaces = n_action_spaces
+	is_learning = _is_learning
+	QTable = Matrix.new(observation_space, action_spaces)
+	#QTable = QTable.rand(QTable)
 
-    QTable = {}
+func predict(current_states: Array, reward_of_previous_state: float) -> int:
+	var action_to_take: int
 
-func max_from_row(dictionary: Dictionary, row_key: Array) -> float:
-    var max_value: float = -INFINITY
+	# Update Q values for each state in current_states
+	for state in current_states:
+		if is_learning and previous_state != -100:
+			# Update the Q value for the previous state and action
+			QTable.data[previous_state][previous_action] = (1 - learning_rate) * QTable.data[previous_state][previous_action] + \
+			learning_rate * (reward_of_previous_state + discounted_factor * QTable.max_from_row(state))
 
-    for key in dictionary.keys():
-        if key[0] == row_key:
-            var value = dictionary[key]
-            if value > max_value:
-                max_value = value
+	# Select an action based on one of the states (e.g., the first or last)
+	# Modify this part as needed, e.g., use a different criterion for choosing the state
+#	var total_state: int = 0
+#	for state in current_states:
+#		total_state += state
+#	var chosen_state: int = round(total_state / current_states.size())
+	var chosen_state: int = current_states.pick_random()
+ # or current_states.front() or any other criterion
+	if is_learning:
+		if randf() < exploration_probability:
+			action_to_take = randi() % action_spaces
+		else:
+			action_to_take = QTable.index_of_max_from_row(chosen_state)
 
-    return max_value
+		previous_state = chosen_state
+		previous_action = action_to_take
 
-func predict(current_state: Array, reward_of_previous_state: float) -> int:
-    if is_learning:
-        if previous_state.size() > 0:
-            var prev_state_values = previous_state
-            var current_state_values = current_state
-            var prev_action_value = previous_action
-            var prev_key = [prev_state_values, prev_action_value]
-            if QTable.has(prev_key):
-                QTable[prev_key] = (1 - learning_rate) * QTable[prev_key] + \
-                learning_rate * (reward_of_previous_state + discounted_factor * max_from_row(QTable, current_state_values))
-            else:
-                QTable[prev_key] = reward_of_previous_state
+	# Update exploration probability and logging
+	if is_learning:
+		steps_completed += 1
+		if steps_completed % decay_per_steps == 0:
+			exploration_probability = max(min_exploration_probability, exploration_probability - exploration_decreasing_decay)
 
-    var action_to_take: int
+	if print_debug_info and steps_completed % decay_per_steps == 0:
+		print("Total steps completed:", steps_completed)
+		print("Current exploration probability:", exploration_probability)
+		print("Q-Table data:", QTable.data)
+		print("-----------------------------------------------------------------------------------------")
 
-    if randf() < exploration_probability and is_learning:
-        action_to_take = randi_range(0, action_spaces - 1)
-    else:
-        var current_state_key = [current_state, action_to_take]
-        if QTable.has(current_state_key):
-            action_to_take = QTable[current_state_key]
-        else:
-            action_to_take = 0
+	return action_to_take
 
-    if is_learning:
-        previous_state = current_state
-        previous_action = action_to_take
+func save(path: String) -> void:
+	var file = FileAccess.open(path, FileAccess.WRITE)
+	file.store_var(QTable.data)
+	file.close()
 
-        if steps_completed != 0 and steps_completed % decay_per_steps == 0:
-            exploration_probability = maxf(min_exploration_probability, exploration_probability - exploration_decreasing_decay)
-
-    if print_debug_info and steps_completed % decay_per_steps == 0:
-        print("Total steps completed:", steps_completed)
-        print("Current exploration probability:", exploration_probability)
-        print("Q-Table data:", QTable)
-        print("-----------------------------------------------------------------------------------------")
-
-    steps_completed += 1
-    return action_to_take
+func load(path: String) -> void:
+	var file = FileAccess.open(path, FileAccess.READ)
+	QTable.data = file.get_var()
+	file.close()
+	is_learning = false
+	exploration_probability = 0.5
