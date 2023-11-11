@@ -1,7 +1,7 @@
 @tool
 extends EditorPlugin
 
-var Neural_Net = load("res://addons/neural_net/Scripts/Neural_Net.gd")
+var Neural_Net = load("res://addons/neural_net/Scripts/Neural/Neural_Net.gd")
 var logo: CompressedTexture2D = load("res://addons/neural_net/NeuralNetwork.png")
 
 func _enter_tree():
