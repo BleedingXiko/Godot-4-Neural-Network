@@ -44,11 +44,18 @@ func predict(current_states: Array, reward_of_previous_state: float) -> int:
 
 	# Select an action based on one of the states (e.g., the first or last)
 	# Modify this part as needed, e.g., use a different criterion for choosing the state
-#	var total_state: int = 0
-#	for state in current_states:
-#		total_state += state
-#	var chosen_state: int = round(total_state / current_states.size())
-	var chosen_state: int = current_states.pick_random()
+	var chosen_state: int
+	
+	if current_states.size() > 1:
+		var total_state: int = 0
+		for state in current_states:
+			total_state += state
+		chosen_state = round(total_state / current_states.size())
+	
+	#if current states is only an array with one value treat it like a regular Qlearning int state
+	else:
+		chosen_state = current_states[0]
+#	var chosen_state: int = current_states.pick_random()
  # or current_states.front() or any other criterion
 	
 	if randf() < exploration_probability:
