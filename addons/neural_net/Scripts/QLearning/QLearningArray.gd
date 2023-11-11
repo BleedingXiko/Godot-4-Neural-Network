@@ -50,18 +50,16 @@ func predict(current_states: Array, reward_of_previous_state: float) -> int:
 #	var chosen_state: int = round(total_state / current_states.size())
 	var chosen_state: int = current_states.pick_random()
  # or current_states.front() or any other criterion
-	if is_learning:
-		if randf() < exploration_probability:
-			action_to_take = randi() % action_spaces
-		else:
-			action_to_take = QTable.index_of_max_from_row(chosen_state)
-
-		previous_state = chosen_state
-		previous_action = action_to_take
-
+	
+	if randf() < exploration_probability:
+		action_to_take = randi() % action_spaces
+	else:
+		action_to_take = QTable.index_of_max_from_row(chosen_state)
+		
 	# Update exploration probability and logging
 	if is_learning:
-		steps_completed += 1
+		previous_state = chosen_state
+		previous_action = action_to_take
 		if steps_completed % decay_per_steps == 0:
 			exploration_probability = max(min_exploration_probability, exploration_probability - exploration_decreasing_decay)
 
@@ -70,17 +68,19 @@ func predict(current_states: Array, reward_of_previous_state: float) -> int:
 		print("Current exploration probability:", exploration_probability)
 		print("Q-Table data:", QTable.data)
 		print("-----------------------------------------------------------------------------------------")
-
+	steps_completed += 1
 	return action_to_take
 
-func save(path: String) -> void:
+func save(path):
 	var file = FileAccess.open(path, FileAccess.WRITE)
-	file.store_var(QTable.data)
+	var data = QTable.save()
+	file.store_var(data)
 	file.close()
 
-func load(path: String) -> void:
+func load(path):
 	var file = FileAccess.open(path, FileAccess.READ)
-	QTable.data = file.get_var()
-	file.close()
+	var data = file.get_var()
+	QTable.data = data
 	is_learning = false
-	exploration_probability = 0.5
+	exploration_probability = 0.05
+	file.close()
