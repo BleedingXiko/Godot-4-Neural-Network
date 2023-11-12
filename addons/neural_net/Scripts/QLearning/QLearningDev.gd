@@ -16,6 +16,7 @@ var discounted_factor: float = 0.9 # Discount factor (gamma)
 var learning_rate: float = 0.2 # Learning rate
 var decay_per_steps: int = 100
 var steps_completed: int = 0
+var MAX_STATE_VALUE: int = 36 # Defualt needs to changed based off the max value of the current state
 
 # States
 var previous_state: int = -100 # Previous state
@@ -24,10 +25,11 @@ var previous_action: int # Previous action taken
 var is_learning: bool = true
 var print_debug_info: bool = false
 
-func _init(n_observations: int, n_action_spaces: int, _is_learning: bool = true) -> void:
+func _init(n_observations: int, n_action_spaces: int, max_state: int, _is_learning: bool = true) -> void:
     observation_space = n_observations
     action_spaces = n_action_spaces
     is_learning = _is_learning
+    MAX_STATE_VALUE = max_state
     QTable = Matrix.new(observation_space, action_spaces)
     # Optionally initialize QTable with random values
 
