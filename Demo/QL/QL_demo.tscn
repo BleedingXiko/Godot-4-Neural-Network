@@ -296,3 +296,16 @@ offset_top = 64.0
 offset_right = 1040.0
 offset_bottom = 160.0
 theme_override_font_sizes/font_size = 50
+
+[node name="target" type="Label" parent="."]
+offset_left = 612.0
+offset_top = 196.0
+offset_right = 1044.0
+offset_bottom = 292.0
+theme_override_font_sizes/font_size = 50
+
+[node name="Timer" type="Timer" parent="."]
+wait_time = 0.001
+autostart = true
+
+[connection signal="timeout" from="Timer" to="." method="_on_timer_timeout"]

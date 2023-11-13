@@ -2485,12 +2485,12 @@ position = Vector2(496, 464)
 position = Vector2(496, 496)
 
 [node name="won" type="Area2D" parent="."]
-position = Vector2(224, 0)
+position = Vector2(1172, 365)
+collision_mask = 2
 script = ExtResource("4_v6yp1")
 
 [node name="CollisionShape2d" type="CollisionShape2D" parent="won"]
 modulate = Color(1, 0, 0.498039, 1)
-position = Vector2(1197.25, 367.5)
 shape = SubResource("RectangleShape2D_mgyl3")
 
 [node name="Neural_Net" type="Node2D" parent="."]
@@ -2503,6 +2503,7 @@ input_nodes = 9
 hidden_nodes = 5
 output_nodes = 1
 random_population = 24
+use_reproduction = true
 reproduced_population = 7
 
 [node name="gen" type="RichTextLabel" parent="."]

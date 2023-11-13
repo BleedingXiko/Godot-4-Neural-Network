@@ -1,13 +1,14 @@
 extends Node2D
 
-var qnet: QLearning
+var qnet: QLearningDev
 var row: int = 0
 var column: int = 0
 
 var reward_states = [4, 24, 35]
+var target: int = reward_states.pick_random()
 var punish_states = [3, 18, 21, 28, 31]
 
-var current_state: int = 0
+var current_state: Array = []
 var previous_reward: float = 0.0
 
 var total_iteration_rewards: Array[float] = []
@@ -15,19 +16,24 @@ var current_iteration_rewards: float = 0.0
 var done: bool = false
 
 func _ready() -> void:
-	qnet = QLearning.new(36, 4)
+	qnet = QLearningDev.new(36 * 3, 4,2, true)
 	qnet.print_debug_info = true
+	qnet.is_learning = true
 
 
-func _physics_process(_delta: float) -> void:
+func _process(_delta: float) -> void:
 	if Input.is_action_just_pressed("predict"):
-		$control.wait_time = 0.5
+		$Timer.wait_time = 0.5
 	elif Input.is_action_just_pressed("ui_down"):
-		$control.wait_time = 0.02
+		$Timer.wait_time = 0.001
+	elif Input.is_action_just_pressed("ui_up"):
+		qnet.load('./qnet.data')
+
+func _on_timer_timeout():
 	if done:
 		reset()
 		return
-	current_state = row * 6 + column
+	current_state = [row * 6 + column, target]
 	var action_to_do: int = qnet.predict(current_state, previous_reward)
 	
 	current_iteration_rewards += previous_reward
@@ -39,13 +45,14 @@ func _physics_process(_delta: float) -> void:
 	elif row * 6 + column in punish_states:
 		previous_reward -= 0.5
 		done = true
-	elif (row * 6 + column) in reward_states:
+	elif (row * 6 + column) == target:
 		previous_reward += 1.0
 		done = true
 	else:
 		previous_reward -= 0.05
 	$player.position = Vector2(96 * column + 16, 512 - (96 * row + 16))
 	$lr.text = str(qnet.exploration_probability)
+	$target.text = str(target)
 
 
 func is_out_bound(action: int) -> bool:
@@ -68,10 +75,11 @@ func is_out_bound(action: int) -> bool:
 		return false
 
 func reset():
+	target = reward_states.pick_random()
 	row = 0
 	column = 0
 	done = false
-	print(current_iteration_rewards)
 	total_iteration_rewards.append(current_iteration_rewards)
 	current_iteration_rewards = 0.0
 	$player.position = Vector2(96 * column + 16, 512 - (96 * row + 16))
+
