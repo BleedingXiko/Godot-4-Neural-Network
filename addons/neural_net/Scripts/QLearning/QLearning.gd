@@ -1,4 +1,3 @@
-
 class_name QLearning
 
 # Observation Spaces are the possible states the agent can be in
