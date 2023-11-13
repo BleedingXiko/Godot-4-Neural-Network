@@ -1,3 +1,5 @@
+#DEPRECATED DO NOT USE
+
 class_name QLearningArray
 
 # Observation Spaces are the possible states the agent can be in
