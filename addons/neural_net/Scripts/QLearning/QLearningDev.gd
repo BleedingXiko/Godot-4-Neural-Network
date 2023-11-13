@@ -74,3 +74,19 @@ func create_composite_state(current_states: Array) -> int:
         composite_state += state * multiplier
         multiplier *= MAX_STATE_VALUE # Define MAX_STATE_VALUE based on your state ranges
     return composite_state
+
+
+
+func save(path):
+	var file = FileAccess.open(path, FileAccess.WRITE)
+	var data = QTable.save()
+	file.store_var(data)
+	file.close()
+
+func load(path):
+	var file = FileAccess.open(path, FileAccess.READ)
+	var data = file.get_var()
+	QTable.data = data
+	is_learning = false
+	exploration_probability = 0.5
+	file.close()
