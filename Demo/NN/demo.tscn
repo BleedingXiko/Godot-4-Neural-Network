@@ -2499,6 +2499,7 @@ script = ExtResource("5_tewmy")
 AI_Scene = ExtResource("6_qs1wj")
 Batch_Size = 13
 Generation_Delay = 8
+show_only_best = true
 input_nodes = 9
 hidden_nodes = 5
 output_nodes = 1
@@ -2516,13 +2517,6 @@ position = Vector2(720, 384)
 zoom = Vector2(0.8, 0.85)
 
 [connection signal="tree_exiting" from="." to="." method="_on_demo_tree_exiting"]
-[connection signal="area_entered" from="track/kill" to="track/kill" method="_on_kill_area_entered" flags=18]
-[connection signal="area_entered" from="track/@Area2D@29504" to="track/@Area2D@29504" method="_on_kill_area_entered" flags=18]
-[connection signal="area_entered" from="track/@Area2D@29571" to="track/@Area2D@29571" method="_on_kill_area_entered" flags=18]
-[connection signal="area_entered" from="track/@Area2D@29572" to="track/@Area2D@29572" method="_on_kill_area_entered" flags=18]
-[connection signal="area_entered" from="track/@Area2D@29573" to="track/@Area2D@29573" method="_on_kill_area_entered" flags=18]
-[connection signal="area_entered" from="track/@Area2D@30127" to="track/@Area2D@30127" method="_on_kill_area_entered" flags=18]
-[connection signal="area_entered" from="track/@Area2D@30184" to="track/@Area2D@30184" method="_on_kill_area_entered" flags=18]
 [connection signal="body_entered" from="won" to="won" method="_on_won_body_entered"]
 [connection signal="gen_changed" from="Neural_Net" to="won" method="_on_neural_net_gen_changed"]
 [connection signal="true_batch_size" from="Neural_Net" to="won" method="_on_neural_net_true_batch_size"]

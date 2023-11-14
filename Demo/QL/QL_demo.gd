@@ -17,6 +17,7 @@ var done: bool = false
 
 func _ready() -> void:
 	qt = QTable.new(36 * 3, 4,2, true)
+	qt.print_debug_info = true
 	qt.exploration_decreasing_decay = 0.01 # Exploration decay
 	qt.min_exploration_probability = 0.05 # Minimum exploration probability
 	qt.discounted_factor = 0.9 # Discount factor (gamma)
