@@ -44,7 +44,7 @@ func set_nn_color():
 	Matrix.average(weights_hidden_output),
 	Matrix.average(Matrix.dot_product(bias_hidden, bias_output)))
 
-func set_activation_function(callback: Callable = Callable(Activation, "tanh_"), dcallback: Callable = Callable(Activation, "dsigmoid")) -> void:
+func set_activation_function(callback: Callable = Callable(Activation, "sigmoid"), dcallback: Callable = Callable(Activation, "dsigmoid")) -> void:
 	activation_function = callback
 	activation_dfunction = dcallback
 
