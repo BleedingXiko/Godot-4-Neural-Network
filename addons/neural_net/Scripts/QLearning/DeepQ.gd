@@ -2,7 +2,7 @@ class_name DeepQ
 
 var observation_space: int
 var action_spaces: int
-var neural_network: NeuralNetwork
+var neural_network: NeuralNetworkAdvanced
 
 # Hyper-parameters
 var exploration_probability: float = 1.0
@@ -20,19 +20,19 @@ var is_learning: bool = true
 var previous_state: Array = []
 var previous_action: int
 
-func _init(n_features: int, n_nodes: int, n_action_spaces: int, _is_learning: bool = true) -> void:
+func _init(n_features: int, n_nodes: Array, n_action_spaces: int, hidden, output, _is_learning: bool = true) -> void:
 	observation_space = n_features  # Number of features in the state
 	action_spaces = n_action_spaces
 	is_learning = _is_learning
 	
 	# Initialize the neural network with the number of features as input nodes
-	neural_network = NeuralNetwork.new(n_features, n_nodes, action_spaces)
+	neural_network = NeuralNetworkAdvanced.new(n_features, n_nodes, action_spaces, hidden, output)
 
 func predict(current_states: Array, reward_of_previous_state: float) -> int:
 	var current_q_values = neural_network.predict(current_states)
 	
 	if is_learning and previous_state.size() != 0:
-		var old_q_value = neural_network.predict(previous_state)[previous_action]
+		#var old_q_value = neural_network.predict(previous_state)[previous_action]
 		var max_future_q = current_q_values.max()
 		var target_q_value = reward_of_previous_state + discounted_factor * max_future_q
 		var target_q_values = neural_network.predict(previous_state)
