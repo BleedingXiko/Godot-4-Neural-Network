@@ -72,7 +72,7 @@ var output = nn.get_prediction_from_raycasts([0, 0.4, 2])
 <pre><code>var output = nn.predict([0.0, 6, 0.2])
 </code></pre>
 <ol start="9">
-<li>If you know the expected output of an input, you can use the <code>train(input_array: Array, target_array: Array)</code> function in a loop. Example:</li>
+<li>If you know the expected output of an input, you can use the <code>train(input_array: Array, target_array: Array)</code> function in a loop (Use Neural Network Advanced for more complex training). Example:</li>
 </ol>
 <pre><code>for epoch in range(2000):
     nn.train([0, 1], [1])
@@ -96,66 +96,71 @@ var output = nn.get_prediction_from_raycasts([0, 0.4, 2])
 <p>where <code>nn_1</code> and <code>nn_2</code> are the parent Neural Networks.</p>
 <h2 id="q-learning-algorithm">Q-Learning Algorithm</h2>
 <p>This algorithm implements Q-Learning algorithm using Q-Table natively in Godot.</p>
-<h3 id="how-to-use-qlearning-class">How to use QLearning class</h3>
+<h3 id="how-to-use-qlearning-class">How to use QTable class</h3>
 <ol>
 <li>
 <p>Initialise a QLearning variable</p>
-<pre><code>var qnet: QLearning = QLearning.new(observation_space, action_space)
+<pre><code>var qt: QTable = QTable.new(observation_space, action_space, max_state_value)
 </code></pre>
-<p>Both the <code>observation_space</code> and <code>action_space</code> have to be natural numbers representing the possible states the agent can be in and the possible actions choices the agent can take in any given state.</p>
+<p>Both the <code>observation_space</code> and <code>action_space</code> have to be natural numbers representing the possible states the agent can be in and the possible actions choices the agent can take in any given state. The max state value makes sure that the composite state will be unique and within the bounds of the table</p>
 </li>
 <li>
-<p>Get a prediction from the QLearning variable:</p>
-<pre><code>qnet.predict(current_state, reward_of_previous_state)
+<p>Get a prediction from the QTable variable:</p>
+<pre><code>qt.predict(current_state, reward_of_previous_state)
 </code></pre>
 <p>The above method returns an whole number that lies between <code>0</code> and <code>action_space - 1</code>. The value returned corresponds to an action the agent can take.<br>
 You can assign the returned value to variable by:</p>
-<pre><code>var action_to_do: int = qnet.predict(current_state, previous_reward)
+<pre><code>var action_to_do: int = qt.predict(current_state, previous_reward)
 </code></pre>
 </li>
 </ol>
 <h3 id="configurable-values">Configurable Values</h3>
 <ol>
 <li>
-<p><code>qnet.exploration_probability</code> -&gt; has to be a float value<br>
+<p><code>qt.exploration_probability</code> -&gt; has to be a float value<br>
 <mark>Default Value: <code>1.0</code></mark><br>
 The probability that the agent will take a random action or exploit the data it has learned.<br>
 Do not change unless you know what you are doing.</p>
 </li>
 <li>
-<p><code>qnet.exploration_decreasing_decay</code> -&gt; has to be a float value<br>
+<p><code>qt.exploration_decreasing_decay</code> -&gt; has to be a float value<br>
 <mark>Default Value: <code>0.01</code></mark><br>
-Changes how the value by which the <code>qnet.exploration_probability</code> decreases every ```qnet.decay_per_steps`` steps.</p>
+Changes how the value by which the <code>qnet.exploration_probability</code> decreases every ```qt.decay_per_steps`` steps.</p>
 </li>
 <li>
-<p><code>qnet.min_exploration_probability</code> -&gt; has to be a float value<br>
+<p><code>qt.min_exploration_probability</code> -&gt; has to be a float value<br>
 <mark>Default Value: <code>0.01</code></mark><br>
 The minimum value the <code>exploration_probability</code> can take.</p>
 </li>
 <li>
-<p><code>qnet.learning_rate</code> -&gt; has to be a float<br>
+<p><code>qt.learning_rate</code> -&gt; has to be a float<br>
 <mark>Default Value:<code>0.2</code></mark><br>
 The rate at which the agent learns.</p>
 </li>
 <li>
-<p><code>qnet.decay_per_steps</code> -&gt; has to be natural number<br>
-<mark>Default Value: <code>100</code></mark><br>
-After how many steps does the <code>qnet.exploration_probability</code> decrease by <code>qnet.exploration_decreasing_decay</code> value.</p>
+<p><code>qt.MAX_STATE_VALUE</code> -&gt; has to be a float<br>
+<mark>Default Value:<code>2</code></mark><br>
+If the current state has more than one value this will make each state unique and within the bounds of the Table</p>
 </li>
 <li>
-<p><code>qnet.is_learning</code> -&gt; has to be a bool value<br>
+<p><code>qt.decay_per_steps</code> -&gt; has to be natural number<br>
+<mark>Default Value: <code>100</code></mark><br>
+After how many steps does the <code>qt.exploration_probability</code> decrease by <code>qt.exploration_decreasing_decay</code> value.</p>
+</li>
+<li>
+<p><code>qt.is_learning</code> -&gt; has to be a bool value<br>
 <mark>Default Value: <code>true</code></mark><br>
-To be set to false only when the <code>qnet.QTable.data</code> is set manually.</p>
+To be set to false only when the <code>qt.Table.data</code> is set manually.</p>
 </li>
 <li>
 <p><code>print_debug_info</code> -&gt; has to be a bool value<br>
 <mark>Default Value: <code>false</code></mark><br>
-This can be set to <code>true</code> if you want to print debug info - total steps completed and current exploration probability - every <code>qnet.decay_per_steps</code>.</p>
+This can be set to <code>true</code> if you want to print debug info - total steps completed and current exploration probability - every <code>qt.decay_per_steps</code>.</p>
 </li>
 </ol>
 <h3 id="things-to-keep-in-mind-when-using-qlearning">Things to keep in mind when using QLearning</h3>
 <ol>
-<li>The predict method of the QLearning class takes two compulsory arguments:<pre><code>qnet.predict(current_state, previous_state_reward)
+<li>The predict method of the QTable class takes two compulsory arguments:<pre><code>qt.predict(current_state, previous_state_reward)
 </code></pre>
 The <code>current_state</code> has to be a whole number representing the state it is currently in, while the <code>previous_state_reward</code> has to a float representing the reward it got for the previous action it took.</li>
 </ol>
