@@ -37,18 +37,18 @@ func _init(_input_nodes: int, _hidden_nodes: int, _output_nodes: int, is_set: bo
 		bias_output = Matrix.rand(Matrix.new(output_nodes, 1))
 	
 	set_activation_function()
-	set_nn_color()
+	#set_nn_color()
 
 func set_nn_color():
 	color = Color(Matrix.average(weights_input_hidden),
 	Matrix.average(weights_hidden_output),
-	Matrix.average(Matrix.dot_product(bias_hidden, bias_output)), 1)
+	Matrix.average(Matrix.dot_product(bias_hidden, bias_output)))
 
-func set_activation_function(callback: Callable = Callable(Activation, "sigmoid"), dcallback: Callable = Callable(Activation, "dsigmoid")) -> void:
+func set_activation_function(callback: Callable = Callable(Activation, "tanh_"), dcallback: Callable = Callable(Activation, "dsigmoid")) -> void:
 	activation_function = callback
 	activation_dfunction = dcallback
 
-func predict(input_array: Array[float]) -> Array:
+func predict(input_array: Array) -> Array:
 	var inputs = Matrix.from_array(input_array)
 	
 	var hidden = Matrix.dot_product(weights_input_hidden, inputs)
