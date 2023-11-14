@@ -40,7 +40,7 @@ var layer_structure = []
 
 var raycasts: Array[RayCast2D]
 
-func _init(a, b, c, hidden_func: Dictionary = ACTIVATIONS.TANH, output_func: Dictionary = ACTIVATIONS.SIGMOID):
+func _init(a: int, b: Array[int], c: int, hidden_func: Dictionary = ACTIVATIONS.TANH, output_func: Dictionary = ACTIVATIONS.SIGMOID):
 	
 	add_layer(a)
 	
@@ -67,7 +67,6 @@ func predict(input_array: Array) -> Array:
 	for layer in network:
 		var product: Matrix = Matrix.dot_product(layer.weights, inputs)
 		var sum: Matrix = Matrix.add(product, layer.bias)
-		#print(layer.activation.function)
 		var map: Matrix = Matrix.map(sum, layer.activation.function)
 		inputs = map
 	return Matrix.to_array(inputs)
@@ -92,33 +91,25 @@ func train(input_array: Array, target_array: Array):
 	var next_layer_errors: Matrix
 	
 	for layer_index in range(network.size() - 1, -1, -1):
-#		print(layer_index)
 		var layer: Dictionary = network[layer_index]
 		var layer_outputs: Matrix = outputs[layer_index]
 		var layer_unactivated_output: Matrix = Matrix.transpose(unactivated_outputs[layer_index])
-#		print(layer_output.data)
 
 		if layer_index == network.size() - 1:
 			var output_errors: Matrix = Matrix.subtract(expected_output, layer_outputs)
 			next_layer_errors = output_errors
-	#		print(Matrix.map(error, layer.activation.derivative).data)
 			var gradients: Matrix = Matrix.map(layer_outputs, layer.activation.derivative)
 			gradients = Matrix.multiply(gradients, output_errors)
 			gradients = Matrix.scalar(gradients, learning_rate)
 			
-#			print(outputs[layer_index - 1].data)
-#			print(layer_unactivated_output.data)
-#			print(layer.weights.data)
 			var weight_delta: Matrix
-#			print(layer_index)
+			
 			if layer_index == 0:
 				weight_delta = Matrix.dot_product(gradients, Matrix.transpose(inputs))
 			else:
 				weight_delta = Matrix.dot_product(gradients, Matrix.transpose(outputs[layer_index - 1]))
-#			print(weight_delta.data)
 			network[layer_index].weights = Matrix.add(layer.weights, weight_delta)
 			network[layer_index].bias = Matrix.add(layer.bias, gradients)
-#			print("Success")
 		else:
 			var weights_hidden_output_t = Matrix.transpose(network[layer_index + 1].weights)
 			var hidden_errors = Matrix.dot_product(weights_hidden_output_t, next_layer_errors)

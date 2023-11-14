@@ -1,6 +1,6 @@
 extends Node2D
 
-var qnet: QLearningDev
+var qt: QTable
 var row: int = 0
 var column: int = 0
 
@@ -16,9 +16,12 @@ var current_iteration_rewards: float = 0.0
 var done: bool = false
 
 func _ready() -> void:
-	qnet = QLearningDev.new(36 * 3, 4,2, true)
-	qnet.print_debug_info = true
-	qnet.is_learning = true
+	qt = QTable.new(36 * 3, 4,2, true)
+	qt.exploration_decreasing_decay = 0.01 # Exploration decay
+	qt.min_exploration_probability = 0.05 # Minimum exploration probability
+	qt.discounted_factor = 0.9 # Discount factor (gamma)
+	qt.learning_rate = 0.2 # Learning rate
+	qt.decay_per_steps = 100
 
 
 func _process(_delta: float) -> void:
@@ -27,14 +30,14 @@ func _process(_delta: float) -> void:
 	elif Input.is_action_just_pressed("ui_down"):
 		$Timer.wait_time = 0.001
 	elif Input.is_action_just_pressed("ui_up"):
-		qnet.load('./qnet.data')
+		qt.load('./qnet.data')
 
 func _on_timer_timeout():
 	if done:
 		reset()
 		return
 	current_state = [row * 6 + column, target]
-	var action_to_do: int = qnet.predict(current_state, previous_reward)
+	var action_to_do: int = qt.predict(current_state, previous_reward)
 	
 	current_iteration_rewards += previous_reward
 	previous_reward = 0.0
@@ -51,7 +54,7 @@ func _on_timer_timeout():
 	else:
 		previous_reward -= 0.05
 	$player.position = Vector2(96 * column + 16, 512 - (96 * row + 16))
-	$lr.text = str(qnet.exploration_probability)
+	$lr.text = str(qt.exploration_probability)
 	$target.text = str(target)
 
 

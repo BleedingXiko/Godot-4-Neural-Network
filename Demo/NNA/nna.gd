@@ -34,7 +34,7 @@ var ACTIVATIONS: Dictionary = {
 var nnas: NeuralNetworkAdvanced
 
 func _ready() -> void:
-	nnas = NeuralNetworkAdvanced.new(2, [6,3,2], 1, ACTIVATIONS.RELU, ACTIVATIONS.TANH)
+	nnas = NeuralNetworkAdvanced.new(2, [6,3,2], 1, ACTIVATIONS.TANH, ACTIVATIONS.SIGMOID)
 	nnas.learning_rate = 0.01
 
 

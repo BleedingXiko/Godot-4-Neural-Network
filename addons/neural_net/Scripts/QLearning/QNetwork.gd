@@ -1,4 +1,4 @@
-class_name DeepQ
+class_name QNetwork
 
 var observation_space: int
 var action_spaces: int
@@ -20,7 +20,7 @@ var is_learning: bool = true
 var previous_state: Array = []
 var previous_action: int
 
-func _init(n_features: int, n_nodes: Array, n_action_spaces: int, hidden, output, _is_learning: bool = true) -> void:
+func _init(n_features: int, n_nodes: Array[int], n_action_spaces: int, hidden, output, _is_learning: bool = true) -> void:
 	observation_space = n_features  # Number of features in the state
 	action_spaces = n_action_spaces
 	is_learning = _is_learning
