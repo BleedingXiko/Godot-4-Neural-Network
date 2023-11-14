@@ -40,6 +40,15 @@ var layer_structure = []
 
 var raycasts: Array[RayCast2D]
 
+func _init(a, b, c, hidden_func: Dictionary = ACTIVATIONS.TANH, output_func: Dictionary = ACTIVATIONS.SIGMOID):
+	
+	add_layer(a)
+	
+	for i in b:
+		add_layer(i, hidden_func)
+		
+	add_layer(c, output_func)
+
 func add_layer(nodes: int, activation: Dictionary = ACTIVATIONS.SIGMOID):
 	
 	if layer_structure.size() != 0:
@@ -157,3 +166,4 @@ func get_distance(_raycast: RayCast2D):
 	else:
 		distance = sqrt((pow(_raycast.target_position.x, 2) + pow(_raycast.target_position.y, 2)))
 	return distance
+
