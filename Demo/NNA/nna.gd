@@ -1,14 +1,12 @@
 extends Node2D
 
-var nnas: NeuralNetworkAdvanced = NeuralNetworkAdvanced.new()
+var nnas: NeuralNetworkAdvanced
 func _ready() -> void:
-
-	nnas.add_layer(2)
-	nnas.add_layer(6, nnas.ACTIVATIONS.TANH)
-	nnas.add_layer(1, nnas.ACTIVATIONS.SIGMOID)
+	nnas = NeuralNetworkAdvanced.new(2, [6,3,2], 1)
+	nnas.hidden_func = nnas.ACTIVATIONS.TANH
+	nnas.output_func = nnas.ACTIVATIONS.SIGMOID
+	nnas.learning_rate = 0.01
 	
-
-#	print(nnas.predict([1, 1]))
 
 func _physics_process(delta: float) -> void:
 	nnas.train([0,0], [0])
