@@ -76,8 +76,8 @@ func is_out_bound(action: int) -> bool:
 
 func reset():
 	target = reward_states.pick_random()
-	row = 0
-	column = 0
+	row = randi_range(1, 5)
+	column = randi_range(1, 5)
 	done = false
 	total_iteration_rewards.append(current_iteration_rewards)
 	current_iteration_rewards = 0.0

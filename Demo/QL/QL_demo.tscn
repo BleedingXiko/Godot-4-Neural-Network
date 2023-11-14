@@ -46,7 +46,7 @@ metadata/_edit_use_anchors_ = true
 offset_top = 480.0
 offset_right = 96.0
 offset_bottom = 576.0
-color = Color(0, 0, 1, 1)
+color = Color(0, 0, 0, 1)
 metadata/_edit_use_anchors_ = true
 
 [node name="normal7" type="ColorRect" parent="bck"]
@@ -285,10 +285,10 @@ color = Color(0, 0, 0, 1)
 metadata/_edit_use_anchors_ = true
 
 [node name="player" type="ColorRect" parent="."]
-offset_left = 16.0
-offset_top = 496.0
-offset_right = 80.0
-offset_bottom = 560.0
+offset_left = 157.0
+offset_top = 428.0
+offset_right = 221.0
+offset_bottom = 492.0
 
 [node name="lr" type="Label" parent="."]
 offset_left = 608.0

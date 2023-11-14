@@ -37,7 +37,7 @@ func _init(_input_nodes: int, _hidden_nodes: int, _output_nodes: int, is_set: bo
 		bias_output = Matrix.rand(Matrix.new(output_nodes, 1))
 	
 	set_activation_function()
-	#set_nn_color()
+	set_nn_color()
 
 func set_nn_color():
 	color = Color(Matrix.average(weights_input_hidden),

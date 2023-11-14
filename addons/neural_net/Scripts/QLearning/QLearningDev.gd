@@ -25,7 +25,7 @@ var previous_action: int # Previous action taken
 var is_learning: bool = true
 var print_debug_info: bool = false
 
-func _init(n_observations: int, n_action_spaces: int, max_state: int, _is_learning: bool = true) -> void:
+func _init(n_observations: int, n_action_spaces: int, max_state: int = 2, _is_learning: bool = true) -> void:
 	observation_space = n_observations
 	action_spaces = n_action_spaces
 	is_learning = _is_learning

@@ -35,14 +35,12 @@ var ACTIVATIONS: Dictionary = {
 
 
 var learning_rate: float = 0.5
-var hidden_func: Dictionary = ACTIVATIONS.TANH 
-var output_func: Dictionary = ACTIVATIONS.SIGMOID
 
 var layer_structure = []
 
 var raycasts: Array[RayCast2D]
 
-func _init(a, b, c):
+func _init(a, b, c, hidden_func: Dictionary = ACTIVATIONS.TANH, output_func: Dictionary = ACTIVATIONS.SIGMOID):
 	
 	add_layer(a)
 	
