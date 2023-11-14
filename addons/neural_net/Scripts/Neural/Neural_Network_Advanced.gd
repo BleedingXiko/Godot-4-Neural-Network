@@ -35,12 +35,14 @@ var ACTIVATIONS: Dictionary = {
 
 
 var learning_rate: float = 0.5
+var hidden_func: Dictionary = ACTIVATIONS.TANH 
+var output_func: Dictionary = ACTIVATIONS.SIGMOID
 
 var layer_structure = []
 
 var raycasts: Array[RayCast2D]
 
-func _init(a, b, c, hidden_func: Dictionary = ACTIVATIONS.TANH, output_func: Dictionary = ACTIVATIONS.SIGMOID):
+func _init(a, b, c):
 	
 	add_layer(a)
 	
@@ -166,4 +168,3 @@ func get_distance(_raycast: RayCast2D):
 	else:
 		distance = sqrt((pow(_raycast.target_position.x, 2) + pow(_raycast.target_position.y, 2)))
 	return distance
-
