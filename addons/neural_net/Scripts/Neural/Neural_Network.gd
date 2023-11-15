@@ -207,34 +207,34 @@ static func mutate_callable(value, _row, _col):
 	value += randf_range(-0.5, 0.5)
 	return value
 
-#func save(path):
-#	var file = FileAccess.open(path, FileAccess.WRITE)
-#	var network: Dictionary = {
-#		"input_nodes": input_nodes,
-#		"hidden_nodes": hidden_nodes,
-#		"output_nodes": output_nodes,
-#		"weights_input_hidden": Matrix.to_array(weights_input_hidden),
-#		"weights_hidden_output": Matrix.to_array(weights_hidden_output),
-#		"bias_hidden": Matrix.to_array(bias_hidden),
-#		"bias_output": Matrix.to_array(bias_output),
-#		"hidden_activation": hidden_activation.name,
-#		"output_activation": output_activation.name,
-#	}
-#	#var data = Table.save()
-#	file.store_var(network)
-#	file.close()
-#
-#
-#func load(path):
-#	var file = FileAccess.open(path, FileAccess.READ)
-#	var data = file.get_var()
-#	input_nodes = data.input_nodes
-#	hidden_nodes = data.hidden_nodes
-#	output_nodes = data.output_nodes
-#
-#	weights_input_hidden = Matrix.from_array(data.weights_input_hidden)
-#	weights_hidden_output = Matrix.from_array(data.weights_hidden_output)
-#	bias_hidden = Matrix.from_array(data.bias_hidden)
-#	bias_output = Matrix.from_array(data.bias_output)
-#
-#	set_activation_function(ACTIVATIONS[data.hidden_activation], ACTIVATIONS[data.output_activation])
+func save(path):
+	var file = FileAccess.open(path, FileAccess.WRITE)
+	var network: Dictionary = {
+		"input_nodes": input_nodes,
+		"hidden_nodes": hidden_nodes,
+		"output_nodes": output_nodes,
+		"weights_input_hidden": weights_input_hidden.save(),
+		"weights_hidden_output": weights_hidden_output.save(),
+		"bias_hidden": bias_hidden.save(),
+		"bias_output": bias_output.save(),
+		"hidden_activation": hidden_activation.name,
+		"output_activation": output_activation.name,
+	}
+	file.store_var(network)
+	file.close()
+
+
+static func load(path) -> NeuralNetwork:
+	var file = FileAccess.open(path, FileAccess.READ)
+	var data = file.get_var()
+	var nn = NeuralNetwork.new(data.input_nodes, data.hidden_nodes, data.output_nodes)
+
+	nn.weights_input_hidden = Matrix.from_array(data.weights_input_hidden)
+	nn.weights_hidden_output = Matrix.from_array(data.weights_hidden_output)
+	nn.bias_hidden = Matrix.from_array(data.bias_hidden)
+	nn.bias_output = Matrix.from_array(data.bias_output)
+
+	nn.set_activation_function(nn.ACTIVATIONS[data.hidden_activation], nn.ACTIVATIONS[data.output_activation])
+	nn.set_nn_color()
+	
+	return nn

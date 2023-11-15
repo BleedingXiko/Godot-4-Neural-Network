@@ -53,9 +53,9 @@ signal true_batch_size(_size: int)
 var setting_up: bool = true
 var freeing: bool = false
 
-@export_range(1, 80) var input_nodes: int
-@export_range(1, 80) var hidden_nodes: int
-@export_range(1, 80) var output_nodes: int
+@export_range(1, 80) var input_nodes: int = 1
+@export_range(1, 80) var hidden_nodes: int = 1
+@export_range(1, 80) var output_nodes: int = 1
 @export_enum("SOFTPLUS", "ELU", "PRELU", "ARCTAN", "TANH", "RELU", "SIGMOID") var hidden_activation: String = "RELU"
 @export_enum("SOFTPLUS", "ELU", "PRELU", "ARCTAN", "TANH", "RELU", "SIGMOID") var output_activation: String = "SIGMOID"
 
@@ -100,6 +100,10 @@ func _ready():
 	
 	spawn()
 
+func spawn_loaded(nn: NeuralNetwork):
+	var new_ai = AI_Scene.instantiate()
+	new_ai.nn = NeuralNetwork.copy(nn)
+	call_deferred("add_child", new_ai)
 
 func spawn():
 	gen_changed.emit(generation)

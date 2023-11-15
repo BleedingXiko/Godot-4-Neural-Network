@@ -1,6 +1,5 @@
-[gd_scene load_steps=14 format=3 uid="uid://bkfbffasse6kf"]
+[gd_scene load_steps=13 format=3 uid="uid://bkfbffasse6kf"]
 
-[ext_resource type="Script" path="res://Demo/NN/demo.gd" id="1_2s4nr"]
 [ext_resource type="Texture2D" uid="uid://bu2yphb0pshw8" path="res://Demo/NN/tilemap.png" id="1_kuhs7"]
 [ext_resource type="PackedScene" uid="uid://c87rop3h5d1ue" path="res://Demo/NN/block.tscn" id="2_iyiel"]
 [ext_resource type="PackedScene" uid="uid://c3pjp67bbav1k" path="res://Demo/NN/die_block.tscn" id="3_4mem1"]
@@ -40,7 +39,6 @@ sources/3 = SubResource("TileSetScenesCollectionSource_imkqc")
 size = Vector2(35.5, 223)
 
 [node name="Demo" type="Node2D" groups=["demo"]]
-script = ExtResource("1_2s4nr")
 
 [node name="track" type="TileMap" parent="."]
 tile_set = SubResource("TileSet_qa7vu")
@@ -2499,12 +2497,12 @@ shape = SubResource("RectangleShape2D_mgyl3")
 position = Vector2(64, 384)
 script = ExtResource("5_tewmy")
 AI_Scene = ExtResource("6_qs1wj")
-Batch_Size = 13
-Generation_Delay = 8
+Batch_Size = 15
+Generation_Delay = 6
 input_nodes = 9
-hidden_nodes = 12
+hidden_nodes = 5
 output_nodes = 2
-random_population = 10
+random_population = 24
 use_reproduction = true
 reproduced_population = 7
 
@@ -2518,6 +2516,13 @@ position = Vector2(720, 384)
 zoom = Vector2(0.8, 0.85)
 
 [connection signal="tree_exiting" from="." to="." method="_on_demo_tree_exiting"]
+[connection signal="area_entered" from="track/@Area2D@27561" to="track/@Area2D@27561" method="_on_kill_area_entered" flags=18]
+[connection signal="area_entered" from="track/@Area2D@27608" to="track/@Area2D@27608" method="_on_kill_area_entered" flags=18]
+[connection signal="area_entered" from="track/@Area2D@27675" to="track/@Area2D@27675" method="_on_kill_area_entered" flags=18]
+[connection signal="area_entered" from="track/@Area2D@27676" to="track/@Area2D@27676" method="_on_kill_area_entered" flags=18]
+[connection signal="area_entered" from="track/@Area2D@27677" to="track/@Area2D@27677" method="_on_kill_area_entered" flags=18]
+[connection signal="area_entered" from="track/@Area2D@28231" to="track/@Area2D@28231" method="_on_kill_area_entered" flags=18]
+[connection signal="area_entered" from="track/@Area2D@28288" to="track/@Area2D@28288" method="_on_kill_area_entered" flags=18]
 [connection signal="body_entered" from="won" to="won" method="_on_won_body_entered"]
 [connection signal="gen_changed" from="Neural_Net" to="won" method="_on_neural_net_gen_changed"]
 [connection signal="true_batch_size" from="Neural_Net" to="won" method="_on_neural_net_true_batch_size"]
