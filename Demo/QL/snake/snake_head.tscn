@@ -1,0 +1,10 @@
+[gd_scene load_steps=2 format=3 uid="uid://cext8jbv0nws"]
+
+[ext_resource type="Texture2D" uid="uid://c4h3gwlm5pvhe" path="res://icon.svg" id="1_86e61"]
+
+[node name="snakeHead" type="Node2D"]
+modulate = Color(0.423529, 1, 0.282353, 1)
+
+[node name="Icon" type="Sprite2D" parent="."]
+position = Vector2(-1, -5)
+texture = ExtResource("1_86e61")

@@ -1,0 +1,26 @@
+[gd_scene load_steps=2 format=3 uid="uid://cfuhtk0guun13"]
+
+[ext_resource type="Script" path="res://Demo/QL/snake/Main.gd" id="1_1sem2"]
+
+[node name="Node2D" type="Node2D"]
+script = ExtResource("1_1sem2")
+
+[node name="Timer" type="Timer" parent="."]
+wait_time = 25.0
+
+[node name="Timer2" type="Timer" parent="."]
+wait_time = 0.001
+autostart = true
+
+[node name="Label" type="Label" parent="."]
+offset_left = 481.0
+offset_top = 45.0
+offset_right = 521.0
+offset_bottom = 68.0
+
+[node name="Camera2D" type="Camera2D" parent="."]
+position = Vector2(161, 117)
+zoom = Vector2(2, 2)
+
+[connection signal="timeout" from="Timer" to="." method="_on_food_timer_timeout"]
+[connection signal="timeout" from="Timer2" to="." method="_on_game_timeout"]
