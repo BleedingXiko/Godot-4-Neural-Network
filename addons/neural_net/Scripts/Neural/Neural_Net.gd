@@ -46,6 +46,8 @@ var ACTIVATIONS: Dictionary = {
 @export var Generation_Delay: int = 10
 
 @export var show_only_best: bool = false
+@export var save_best: bool = true
+@export var save_path: String = "./nn.data"
 
 signal gen_changed(_generation: int)
 signal true_batch_size(_size: int)
@@ -195,6 +197,8 @@ func reload_generation():
 	best_10_nn.sort_custom(Callable(self, "custom_sort"))
 	if use_reproduction: best_10_nn = best_10_nn.slice(best_10_nn.size() - top_value_cutoff, -1)
 	
+	if save_best:
+		best_10_nn[-1].save(save_path)
 	freeing = true
 	timer.stop()
 	

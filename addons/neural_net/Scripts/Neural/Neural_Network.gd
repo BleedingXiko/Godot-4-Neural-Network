@@ -229,10 +229,10 @@ static func load(path) -> NeuralNetwork:
 	var data = file.get_var()
 	var nn = NeuralNetwork.new(data.input_nodes, data.hidden_nodes, data.output_nodes)
 
-	nn.weights_input_hidden = Matrix.from_array(data.weights_input_hidden)
-	nn.weights_hidden_output = Matrix.from_array(data.weights_hidden_output)
-	nn.bias_hidden = Matrix.from_array(data.bias_hidden)
-	nn.bias_output = Matrix.from_array(data.bias_output)
+	nn.weights_input_hidden = Matrix.load(data.weights_input_hidden)
+	nn.weights_hidden_output = Matrix.load(data.weights_hidden_output)
+	nn.bias_hidden = Matrix.load(data.bias_hidden)
+	nn.bias_output = Matrix.load(data.bias_output)
 
 	nn.set_activation_function(nn.ACTIVATIONS[data.hidden_activation], nn.ACTIVATIONS[data.output_activation])
 	nn.set_nn_color()

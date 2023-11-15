@@ -15,20 +15,11 @@ func _init(_rows: int, _cols: int, value: float = 0.0) -> void:
 			data[row].insert(col, value)
 
 static func from_array(arr: Array) -> Matrix:
-	var result: Matrix = Matrix.new(arr.size(), 1)
-	result.rows = arr.size()
-	if arr[0] is Array:
-		result.cols = arr[0].size()
-		result.data = arr
-	else:
-		result.cols = 1
-		for i in range(result.rows):
-			result.data.append([])
-			result.data[i].append(arr[i])
-	
+	var result = Matrix.new(arr.size(), 1)
+	for row in range(result.rows):
+		result.data[row][0] = arr[row]
 	return result
 
-#flattened array use save() for full data
 static func to_array(matrix: Matrix) -> Array:
 	var result = []
 	for row in range(matrix.rows):
@@ -184,7 +175,17 @@ func save() -> Array:
 	return data_to_save
 
 # Load function
-static func load(data: Array) -> Matrix:
-	var matrix = Matrix.from_array(data)
-	return matrix
+static func load(arr: Array) -> Matrix:
+	var result: Matrix = Matrix.new(arr.size(), 1)
+	result.rows = arr.size()
+	if arr[0] is Array:
+		result.cols = arr[0].size()
+		result.data = arr
+	else:
+		result.cols = 1
+		for i in range(result.rows):
+			result.data.append([])
+			result.data[i].append(arr[i])
+	
+	return result
 
