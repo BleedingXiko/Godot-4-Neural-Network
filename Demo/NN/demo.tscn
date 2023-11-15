@@ -2499,11 +2499,10 @@ script = ExtResource("5_tewmy")
 AI_Scene = ExtResource("6_qs1wj")
 Batch_Size = 13
 Generation_Delay = 8
-show_only_best = true
 input_nodes = 9
-hidden_nodes = 5
+hidden_nodes = 12
 output_nodes = 1
-random_population = 24
+random_population = 10
 use_reproduction = true
 reproduced_population = 7
 
