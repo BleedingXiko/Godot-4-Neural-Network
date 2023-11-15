@@ -47,14 +47,14 @@ var layer_structure = []
 
 var raycasts: Array[RayCast2D]
 
-func _init(a: int, b: Array[int], c: int, hidden_func: Dictionary = ACTIVATIONS.TANH, output_func: Dictionary = ACTIVATIONS.SIGMOID):
-	
-	add_layer(a)
-	
-	for i in b:
-		add_layer(i, hidden_func)
-		
-	add_layer(c, output_func)
+#func _init(a: int, b: Array[int], c: int, hidden_func: Dictionary = ACTIVATIONS.TANH, output_func: Dictionary = ACTIVATIONS.SIGMOID):
+#
+#	add_layer(a)
+#
+#	for i in b:
+#		add_layer(i, hidden_func)
+#
+#	add_layer(c, output_func)
 
 func add_layer(nodes: int, activation: Dictionary = ACTIVATIONS.SIGMOID):
 	
@@ -65,7 +65,6 @@ func add_layer(nodes: int, activation: Dictionary = ACTIVATIONS.SIGMOID):
 			"activation": activation
 		}
 		network.push_back(layer_data)
-
 	layer_structure.append(nodes)
 
 
@@ -164,3 +163,32 @@ func get_distance(_raycast: RayCast2D):
 	else:
 		distance = sqrt((pow(_raycast.target_position.x, 2) + pow(_raycast.target_position.y, 2)))
 	return distance
+
+func save(path: String):
+	var file = FileAccess.open(path, FileAccess.WRITE)
+	var data_to_save = []
+	for layer in network:
+		var layer_data = {
+			"weights": layer.weights.save(),
+			"bias": layer.bias.save(),
+			"activation": layer.activation.name
+		}
+		data_to_save.append(layer_data)
+	
+	file.store_var(data_to_save)
+	file.close()
+	print(data_to_save)
+
+func load(path: String):
+	var file = FileAccess.open(path, FileAccess.READ)
+	var data = file.get_var()
+	
+	network.clear()
+	for layer_data in data:
+		var layer = {
+			"weights": Matrix.load(layer_data.weights),
+			"bias": Matrix.load(layer_data.bias),
+			"activation": ACTIVATIONS[layer_data.activation]
+		}
+		network.append(layer)
+	file.close()
