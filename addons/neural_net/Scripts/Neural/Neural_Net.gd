@@ -1,5 +1,44 @@
 extends Node2D
 
+var ACTIVATIONS: Dictionary = {
+	"SIGMOID": {
+		"function": Callable(Activation, "sigmoid"),
+		"derivative": Callable(Activation, "dsigmoid"),
+		"name": "SIGMOID",
+	},
+	"RELU": {
+		"function": Callable(Activation, "relu"),
+		"derivative": Callable(Activation, "drelu"),
+		"name": "RELU"
+	},
+	"TANH": {
+		"function": Callable(Activation, "tanh_"),
+		"derivative": Callable(Activation, "dtanh"),
+		"name": "TANH"
+	},
+	"ARCTAN": {
+		"function": Callable(Activation, "arcTan"),
+		"derivative": Callable(Activation, "darcTan"),
+		"name": "ARCTAN"
+	},
+	"PRELU": {
+		"function": Callable(Activation, "prelu"),
+		"derivative": Callable(Activation, "dprelu"),
+		"name": "PRELU"
+	},
+	"ELU": {
+		"function": Callable(Activation, "elu"),
+		"derivative": Callable(Activation, "delu"),
+		"name": "ELU"
+	},
+	"SOFTPLUS": {
+		"function": Callable(Activation, "softplus"),
+		"derivative": Callable(Activation, "dsoftplus"),
+		"name": "SOFTPLUS"
+	}
+}
+
+
 @export var AI_Scene: PackedScene
 
 @export var Batch_Size: int = 50
@@ -14,15 +53,17 @@ signal true_batch_size(_size: int)
 var setting_up: bool = true
 var freeing: bool = false
 
-@export var input_nodes: int
-@export var hidden_nodes: int
-@export var output_nodes: int
+@export_range(1, 80) var input_nodes: int
+@export_range(1, 80) var hidden_nodes: int
+@export_range(1, 80) var output_nodes: int
+@export_enum("SOFTPLUS", "ELU", "PRELU", "ARCTAN", "TANH", "RELU", "SIGMOID") var hidden_activation: String = "RELU"
+@export_enum("SOFTPLUS", "ELU", "PRELU", "ARCTAN", "TANH", "RELU", "SIGMOID") var output_activation: String = "SIGMOID"
 
-@export var random_population: int = 20
+@export_range(1, 80) var random_population: int = 20
 
 @export var use_reproduction: bool = false
 
-@export var reproduced_population: int = 5
+@export_range(1, 80) var reproduced_population: int = 5
 
 var top_value_cutoff
 
@@ -55,8 +96,10 @@ func _ready():
 	
 
 	best_nn = NeuralNetwork.new(input_nodes, hidden_nodes, output_nodes)
+	best_nn.set_activation_function(ACTIVATIONS[hidden_activation], ACTIVATIONS[output_activation])
 	
 	spawn()
+
 
 func spawn():
 	gen_changed.emit(generation)
@@ -69,21 +112,25 @@ func spawn():
 			randomize()
 			var new_ai = AI_Scene.instantiate()
 			new_ai.nn = NeuralNetwork.new(input_nodes, hidden_nodes, output_nodes)
+			new_ai.nn.set_activation_function(ACTIVATIONS[hidden_activation], ACTIVATIONS[output_activation])
 			spawn_population.append(new_ai)
 	else:
 		for i in range(Batch_Size):
 			var new_ai = AI_Scene.instantiate()
 			new_ai.nn =  NeuralNetwork.copy(NeuralNetwork.mutate(best_nn))
+			new_ai.nn.set_activation_function(ACTIVATIONS[hidden_activation], ACTIVATIONS[output_activation])
 			spawn_population.append(new_ai)
 		
 		for i in range(random_population):
 			randomize()
 			var new_ai = AI_Scene.instantiate()
 			new_ai.nn = NeuralNetwork.new(input_nodes, hidden_nodes, output_nodes)
+			new_ai.nn.set_activation_function(ACTIVATIONS[hidden_activation], ACTIVATIONS[output_activation])
 			spawn_population.append(new_ai)
 			
 		var new_ai = AI_Scene.instantiate()
 		new_ai.nn = NeuralNetwork.copy(best_nn)
+		new_ai.nn.set_activation_function(ACTIVATIONS[hidden_activation], ACTIVATIONS[output_activation])
 		spawn_population.append(new_ai)
 	
 		if use_reproduction:

@@ -5,31 +5,38 @@ var network: Array
 var ACTIVATIONS: Dictionary = {
 	"SIGMOID": {
 		"function": Callable(Activation, "sigmoid"),
-		"derivative": Callable(Activation, "dsigmoid")
+		"derivative": Callable(Activation, "dsigmoid"),
+		"name": "SIGMOID",
 	},
 	"RELU": {
 		"function": Callable(Activation, "relu"),
-		"derivative": Callable(Activation, "drelu")
+		"derivative": Callable(Activation, "drelu"),
+		"name": "RELU"
 	},
 	"TANH": {
 		"function": Callable(Activation, "tanh_"),
-		"derivative": Callable(Activation, "dtanh")
+		"derivative": Callable(Activation, "dtanh"),
+		"name": "TANH"
 	},
 	"ARCTAN": {
 		"function": Callable(Activation, "arcTan"),
-		"derivative": Callable(Activation, "darcTan")
+		"derivative": Callable(Activation, "darcTan"),
+		"name": "ARCTAN"
 	},
 	"PRELU": {
 		"function": Callable(Activation, "prelu"),
-		"derivative": Callable(Activation, "dprelu")
+		"derivative": Callable(Activation, "dprelu"),
+		"name": "PRELU"
 	},
 	"ELU": {
 		"function": Callable(Activation, "elu"),
-		"derivative": Callable(Activation, "delu")
+		"derivative": Callable(Activation, "delu"),
+		"name": "ELU"
 	},
 	"SOFTPLUS": {
 		"function": Callable(Activation, "softplus"),
-		"derivative": Callable(Activation, "dsoftplus")
+		"derivative": Callable(Activation, "dsoftplus"),
+		"name": "SOFTPLUS"
 	}
 }
 

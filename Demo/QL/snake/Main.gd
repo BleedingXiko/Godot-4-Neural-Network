@@ -17,37 +17,45 @@ var manhattan_distance = 0
 var ACTIVATIONS: Dictionary = {
 	"SIGMOID": {
 		"function": Callable(Activation, "sigmoid"),
-		"derivative": Callable(Activation, "dsigmoid")
+		"derivative": Callable(Activation, "dsigmoid"),
+		"name": "SIGMOID",
 	},
 	"RELU": {
 		"function": Callable(Activation, "relu"),
-		"derivative": Callable(Activation, "drelu")
+		"derivative": Callable(Activation, "drelu"),
+		"name": "RELU"
 	},
 	"TANH": {
 		"function": Callable(Activation, "tanh_"),
-		"derivative": Callable(Activation, "dtanh")
+		"derivative": Callable(Activation, "dtanh"),
+		"name": "TANH"
 	},
 	"ARCTAN": {
 		"function": Callable(Activation, "arcTan"),
-		"derivative": Callable(Activation, "darcTan")
+		"derivative": Callable(Activation, "darcTan"),
+		"name": "ARCTAN"
 	},
 	"PRELU": {
 		"function": Callable(Activation, "prelu"),
-		"derivative": Callable(Activation, "dprelu")
+		"derivative": Callable(Activation, "dprelu"),
+		"name": "PRELU"
 	},
 	"ELU": {
 		"function": Callable(Activation, "elu"),
-		"derivative": Callable(Activation, "delu")
+		"derivative": Callable(Activation, "delu"),
+		"name": "ELU"
 	},
 	"SOFTPLUS": {
 		"function": Callable(Activation, "softplus"),
-		"derivative": Callable(Activation, "dsoftplus")
+		"derivative": Callable(Activation, "dsoftplus"),
+		"name": "SOFTPLUS"
 	}
 }
 
-
 func _ready():
 	qnet = QNetwork.new(5, [8], 4, ACTIVATIONS.TANH, ACTIVATIONS.SIGMOID, true, true) # 4 actions
+	qnet.memory_capacity = 800
+	qnet.batch_size = 128
 	qnet.is_learning = true
 	qnet.min_exploration_probability = 0.05
 	qnet.learning_rate = 0.01

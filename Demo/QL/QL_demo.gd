@@ -51,7 +51,8 @@ func _on_timer_timeout():
 		done = true
 	elif (row * 6 + column) == target:
 		previous_reward += 1.0
-		done = true
+		done = false
+		target = reward_states.pick_random()
 	else:
 		previous_reward -= 0.05
 	$player.position = Vector2(96 * column + 16, 512 - (96 * row + 16))

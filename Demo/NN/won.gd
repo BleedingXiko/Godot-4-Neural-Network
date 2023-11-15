@@ -13,3 +13,4 @@ func _on_neural_net_gen_changed(_generation):
 
 func _on_neural_net_true_batch_size(_size):
 	print("True Batch Size: ", _size)
+

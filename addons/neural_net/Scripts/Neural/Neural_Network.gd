@@ -1,5 +1,43 @@
 class_name NeuralNetwork
 
+var ACTIVATIONS: Dictionary = {
+	"SIGMOID": {
+		"function": Callable(Activation, "sigmoid"),
+		"derivative": Callable(Activation, "dsigmoid"),
+		"name": "SIGMOID",
+	},
+	"RELU": {
+		"function": Callable(Activation, "relu"),
+		"derivative": Callable(Activation, "drelu"),
+		"name": "RELU"
+	},
+	"TANH": {
+		"function": Callable(Activation, "tanh_"),
+		"derivative": Callable(Activation, "dtanh"),
+		"name": "TANH"
+	},
+	"ARCTAN": {
+		"function": Callable(Activation, "arcTan"),
+		"derivative": Callable(Activation, "darcTan"),
+		"name": "ARCTAN"
+	},
+	"PRELU": {
+		"function": Callable(Activation, "prelu"),
+		"derivative": Callable(Activation, "dprelu"),
+		"name": "PRELU"
+	},
+	"ELU": {
+		"function": Callable(Activation, "elu"),
+		"derivative": Callable(Activation, "delu"),
+		"name": "ELU"
+	},
+	"SOFTPLUS": {
+		"function": Callable(Activation, "softplus"),
+		"derivative": Callable(Activation, "dsoftplus"),
+		"name": "SOFTPLUS"
+	}
+}
+
 var best: bool = false
 var input_nodes: int
 var hidden_nodes: int 
@@ -14,8 +52,8 @@ var bias_output: Matrix
 var learning_rate: float = 0.15
 
 
-var activation_function: Callable
-var activation_dfunction: Callable
+var hidden_activation: Dictionary
+var output_activation: Dictionary
 
 var fitness: float = 0.0
 
@@ -42,22 +80,22 @@ func _init(_input_nodes: int, _hidden_nodes: int, _output_nodes: int, is_set: bo
 func set_nn_color():
 	color = Color(Matrix.average(weights_input_hidden),
 	Matrix.average(weights_hidden_output),
-	Matrix.average(Matrix.dot_product(bias_hidden, bias_output)))
+	Matrix.average(bias_hidden))
 
-func set_activation_function(callback: Callable = Callable(Activation, "sigmoid"), dcallback: Callable = Callable(Activation, "dsigmoid")) -> void:
-	activation_function = callback
-	activation_dfunction = dcallback
+func set_activation_function(hidden_func: Dictionary = ACTIVATIONS.TANH, output_func: Dictionary = ACTIVATIONS.SIGMOID) -> void:
+	hidden_activation = hidden_func
+	output_activation = output_func
 
 func predict(input_array: Array) -> Array:
 	var inputs = Matrix.from_array(input_array)
 	
 	var hidden = Matrix.dot_product(weights_input_hidden, inputs)
 	hidden = Matrix.add(hidden, bias_hidden)
-	hidden = Matrix.map(hidden, activation_function)
+	hidden = Matrix.map(hidden, hidden_activation.function)
 
 	var output = Matrix.dot_product(weights_hidden_output, hidden)
 	output = Matrix.add(output, bias_output)
-	output = Matrix.map(output, activation_function)
+	output = Matrix.map(output, output_activation.function)
 
 	return Matrix.to_array(output)
 
@@ -67,15 +105,15 @@ func train(input_array: Array, target_array: Array):
 	
 	var hidden = Matrix.dot_product(weights_input_hidden, inputs);
 	hidden = Matrix.add(hidden, bias_hidden)
-	hidden = Matrix.map(hidden, activation_function)
+	hidden = Matrix.map(hidden, hidden_activation.function)
 	
 	var outputs = Matrix.dot_product(weights_hidden_output, hidden)
 	outputs = Matrix.add(outputs, bias_output)
-	outputs = Matrix.map(outputs, activation_function)
+	outputs = Matrix.map(outputs, output_activation.function)
 	
 	var output_errors = Matrix.subtract(targets, outputs)
 	
-	var gradients = Matrix.map(outputs, activation_dfunction)
+	var gradients = Matrix.map(outputs, output_activation.derivative)
 	gradients = Matrix.multiply(gradients, output_errors)
 	gradients = Matrix.scalar(gradients, learning_rate)
 	
@@ -88,7 +126,7 @@ func train(input_array: Array, target_array: Array):
 	var weights_hidden_output_t = Matrix.transpose(weights_hidden_output)
 	var hidden_errors = Matrix.dot_product(weights_hidden_output_t, output_errors)
 	
-	var hidden_gradient = Matrix.map(hidden, activation_dfunction)
+	var hidden_gradient = Matrix.map(hidden, hidden_activation.derivative)
 	hidden_gradient = Matrix.multiply(hidden_gradient, hidden_errors)
 	hidden_gradient = Matrix.scalar(hidden_gradient, learning_rate)
 	
@@ -133,6 +171,7 @@ static func reproduce(a: NeuralNetwork, b: NeuralNetwork) -> NeuralNetwork:
 	result.weights_hidden_output = Matrix.random(a.weights_hidden_output, b.weights_hidden_output)
 	result.bias_hidden = Matrix.random(a.bias_hidden, b.bias_hidden)
 	result.bias_output = Matrix.random(a.bias_output, b.bias_output)
+	result.set_activation_function(a.hidden_activation, a.output_activation)
 
 	return result
 
@@ -142,6 +181,7 @@ static func mutate(nn: NeuralNetwork, callback: Callable = Callable(NeuralNetwor
 	result.weights_hidden_output = Matrix.map(nn.weights_hidden_output, callback)
 	result.bias_hidden = Matrix.map(nn.bias_hidden, callback)
 	result.bias_output = Matrix.map(nn.bias_output, callback)
+	result.set_activation_function(nn.hidden_activation, nn.output_activation)
 	return result
 
 static func mutate_callable_reproduced(value, _row, _col):
@@ -158,6 +198,7 @@ static func copy(nn : NeuralNetwork) -> NeuralNetwork:
 	result.bias_output = Matrix.copy(nn.bias_output)
 	result.color = nn.color
 	result.fitness = nn.fitness
+	result.set_activation_function(nn.hidden_activation, nn.output_activation)
 	return result
 
 static func mutate_callable(value, _row, _col):
@@ -165,3 +206,35 @@ static func mutate_callable(value, _row, _col):
 	randomize()
 	value += randf_range(-0.5, 0.5)
 	return value
+
+#func save(path):
+#	var file = FileAccess.open(path, FileAccess.WRITE)
+#	var network: Dictionary = {
+#		"input_nodes": input_nodes,
+#		"hidden_nodes": hidden_nodes,
+#		"output_nodes": output_nodes,
+#		"weights_input_hidden": Matrix.to_array(weights_input_hidden),
+#		"weights_hidden_output": Matrix.to_array(weights_hidden_output),
+#		"bias_hidden": Matrix.to_array(bias_hidden),
+#		"bias_output": Matrix.to_array(bias_output),
+#		"hidden_activation": hidden_activation.name,
+#		"output_activation": output_activation.name,
+#	}
+#	#var data = Table.save()
+#	file.store_var(network)
+#	file.close()
+#
+#
+#func load(path):
+#	var file = FileAccess.open(path, FileAccess.READ)
+#	var data = file.get_var()
+#	input_nodes = data.input_nodes
+#	hidden_nodes = data.hidden_nodes
+#	output_nodes = data.output_nodes
+#
+#	weights_input_hidden = Matrix.from_array(data.weights_input_hidden)
+#	weights_hidden_output = Matrix.from_array(data.weights_hidden_output)
+#	bias_hidden = Matrix.from_array(data.bias_hidden)
+#	bias_output = Matrix.from_array(data.bias_output)
+#
+#	set_activation_function(ACTIVATIONS[data.hidden_activation], ACTIVATIONS[data.output_activation])

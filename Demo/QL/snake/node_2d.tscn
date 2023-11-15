@@ -13,10 +13,10 @@ wait_time = 0.001
 autostart = true
 
 [node name="Label" type="Label" parent="."]
-offset_left = 481.0
-offset_top = 45.0
-offset_right = 521.0
-offset_bottom = 68.0
+offset_left = 310.0
+offset_top = 23.0
+offset_right = 350.0
+offset_bottom = 46.0
 
 [node name="Camera2D" type="Camera2D" parent="."]
 position = Vector2(161, 117)

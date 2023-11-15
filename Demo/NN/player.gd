@@ -23,7 +23,7 @@ func _physics_process(delta):
 	if is_on_floor(): addition_arg = [0.0]
 	else: addition_arg = [1.0]
 	var prediction = nn.get_prediction_from_raycasts(addition_arg)
-	if prediction[0] > 0.6 and is_on_floor():
+	if prediction[0] > prediction[1] and is_on_floor():
 		velocity.y = JUMP_VELOCITY
 	if not is_on_floor():
 		velocity.y += gravity * delta
