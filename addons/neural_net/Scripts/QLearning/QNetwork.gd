@@ -33,7 +33,8 @@ func _init(n_features: int, n_nodes: Array[int], n_action_spaces: int, hidden: D
 	use_replay = _use_replay
 
 	# Initialize the neural network
-	neural_network = NeuralNetworkAdvanced.new(n_features, n_nodes, action_spaces, hidden, output)
+	neural_network = NeuralNetworkAdvanced.new()
+	neural_network.make(n_features, n_nodes, action_spaces, hidden, output)
 	neural_network.learning_rate = learning_rate
 
 func add_to_memory(state, action, reward, next_state, done):
