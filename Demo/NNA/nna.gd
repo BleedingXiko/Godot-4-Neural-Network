@@ -40,17 +40,22 @@ var ACTIVATIONS: Dictionary = {
 var nnas: NeuralNetworkAdvanced
 
 func _ready() -> void:
-	nnas = NeuralNetworkAdvanced.new(2, [6,3,2], 1, ACTIVATIONS.TANH, ACTIVATIONS.SIGMOID)
+	nnas = NeuralNetworkAdvanced.new()
+	nnas.add_layer(2)
+	nnas.add_layer(6, ACTIVATIONS.TANH)
+	nnas.add_layer(3, ACTIVATIONS.RELU)
+	nnas.add_layer(1, ACTIVATIONS.SIGMOID)
 	nnas.learning_rate = 0.01
 
 
 func _physics_process(delta: float) -> void:
-	nnas.train([0,0], [0])
-	nnas.train([1,0], [1])
-	nnas.train([0,1], [1])
-	nnas.train([1,1], [0])
+#	nnas.train([0,0], [0])
+#	nnas.train([1,0], [1])
+#	nnas.train([0,1], [1])
+#	nnas.train([1,1], [0])
 	
 	if Input.is_action_just_pressed("predict"):
+		nnas.load("./test.nn")
 		print("--------------Prediction--------------")
 		print(nnas.predict([0,0]))
 		print(nnas.predict([1,0]))
