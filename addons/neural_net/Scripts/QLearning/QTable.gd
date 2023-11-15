@@ -87,7 +87,7 @@ func save(path):
 func load(path):
 	var file = FileAccess.open(path, FileAccess.READ)
 	var data = file.get_var()
-	Table.data = data
+	Table = Matrix.load(data)
 	is_learning = false
 	exploration_probability = min_exploration_probability
 	file.close()

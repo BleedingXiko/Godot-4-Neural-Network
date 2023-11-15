@@ -46,6 +46,8 @@ var ACTIVATIONS: Dictionary = {
 @export var Generation_Delay: int = 10
 
 @export var show_only_best: bool = false
+@export var save_best: bool = true
+@export var save_path: String = "./nn.data"
 
 signal gen_changed(_generation: int)
 signal true_batch_size(_size: int)
@@ -53,9 +55,9 @@ signal true_batch_size(_size: int)
 var setting_up: bool = true
 var freeing: bool = false
 
-@export_range(1, 80) var input_nodes: int
-@export_range(1, 80) var hidden_nodes: int
-@export_range(1, 80) var output_nodes: int
+@export_range(1, 80) var input_nodes: int = 1
+@export_range(1, 80) var hidden_nodes: int = 1
+@export_range(1, 80) var output_nodes: int = 1
 @export_enum("SOFTPLUS", "ELU", "PRELU", "ARCTAN", "TANH", "RELU", "SIGMOID") var hidden_activation: String = "RELU"
 @export_enum("SOFTPLUS", "ELU", "PRELU", "ARCTAN", "TANH", "RELU", "SIGMOID") var output_activation: String = "SIGMOID"
 
@@ -100,6 +102,10 @@ func _ready():
 	
 	spawn()
 
+func spawn_loaded(nn: NeuralNetwork):
+	var new_ai = AI_Scene.instantiate()
+	new_ai.nn = NeuralNetwork.copy(nn)
+	call_deferred("add_child", new_ai)
 
 func spawn():
 	gen_changed.emit(generation)
@@ -191,6 +197,8 @@ func reload_generation():
 	best_10_nn.sort_custom(Callable(self, "custom_sort"))
 	if use_reproduction: best_10_nn = best_10_nn.slice(best_10_nn.size() - top_value_cutoff, -1)
 	
+	if save_best:
+		best_10_nn[-1].save(save_path)
 	freeing = true
 	timer.stop()
 	
