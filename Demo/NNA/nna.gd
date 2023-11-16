@@ -12,16 +12,16 @@ func _ready() -> void:
 	nnas.l2_regularization_strength = 0.001
 	
 	
-	for i in range(1200):
-		nnas.train([0,0], [0])
-		nnas.train([1,0], [1])
-		nnas.train([0,1], [1])
-		nnas.train([1,1], [0])
+#	for i in range(1200):
+#		nnas.train([0,0], [0])
+#		nnas.train([1,0], [1])
+#		nnas.train([0,1], [1])
+#		nnas.train([1,1], [0])
 
 
 func _physics_process(delta: float) -> void:
 	if Input.is_action_just_pressed("predict"):
-		#nnas.save("./test.nn")
+		nnas.load("./test.nn")
 		print("--------------Prediction--------------")
 		print(nnas.predict([0,0]))
 		print(nnas.predict([1,0]))

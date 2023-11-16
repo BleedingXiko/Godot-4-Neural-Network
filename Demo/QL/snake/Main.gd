@@ -21,7 +21,7 @@ var q_network_config = {
 	"exploration_decreasing_decay": 0.01,
 	"min_exploration_probability": 0.05,
 	"discounted_factor": 0.9,
-	"learning_rate": 0.01,
+	"learning_rate": 0.005,
 	"decay_per_steps": 100,
 	"use_replay": true,
 	"is_learning": true,
@@ -29,12 +29,12 @@ var q_network_config = {
 	"update_target_every_steps": 500,
 	"memory_capacity": 500,
 	"batch_size": 128,
-	"l2_regularization_strength": 0.01,
+	"l2_regularization_strength": 0.1,
 	"use_l2_regularization": false,
 }
 
 func _ready():
-	qnet = QNetwork.new(12, [8], 4, ACTIVATIONS.RELU, ACTIVATIONS.SIGMOID, q_network_config) # 4 actions
+	qnet = QNetwork.new(12, [8], 4, ACTIVATIONS.TANH, ACTIVATIONS.SIGMOID, q_network_config) # 4 actions
 	create_grid()
 	reset_game()
 	setup_timer()
@@ -152,9 +152,9 @@ func get_reward():
 	if snake[0].position == food.position:
 		score += 1
 		#print("ai won")
+		grow_snake()
 		food.queue_free()
 		spawn_food()
-		grow_snake()
 		reward += 10
 	elif snake[0].position.x < 0 or snake[0].position.x >= grid_size.x * tile_size or snake[0].position.y < 0 or snake[0].position.y >= grid_size.y * tile_size:
 		reward += -5
