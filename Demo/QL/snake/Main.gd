@@ -17,13 +17,13 @@ var manhattan_distance = 0
 var ACTIVATIONS = Activation.new().functions
 
 func _ready():
-	#sigmoid required for this example, exploding gradient descent happens on most others
+	#sigmoid required for this example, exploding weights happens on most others
 	qnet = QNetwork.new(12, [6,8], 4, ACTIVATIONS.SIGMOID, ACTIVATIONS.SIGMOID, true, true) # 4 actions
 	qnet.memory_capacity = 500
-	qnet.batch_size = 256
+	qnet.batch_size = 80
 	qnet.is_learning = true
 	qnet.min_exploration_probability = 0.05
-	qnet.learning_rate = 0.0001
+	qnet.learning_rate = 0.001
 	qnet.decay_per_steps = 300
 	create_grid()
 	reset_game()
@@ -75,13 +75,14 @@ func spawn_snake():
 	var snake_head = Sprite2D.new()
 	snake_head.texture = load("res://icon.svg")
 	snake_head.modulate = Color(1, 0, 0) # Red color for snake head
-	snake_head.position = grid_size / 2 * tile_size
+	var snake_position = Vector2(randi_range(0, grid_size.x - 1), randi_range(0, grid_size.y - 1)) * tile_size
+	snake_head.position = snake_position#
 	snake_head.scale = Vector2(0.15, 0.15)
 	add_child(snake_head)
 	snake.append(snake_head)
 
-	var body_part = create_snake_body_part(snake_head.position - Vector2(0, tile_size))
-	snake_body.append(body_part)
+	#var body_part = create_snake_body_part(snake_head.position - Vector2(0, tile_size))
+	#snake_body.append(body_part)
 
 func create_snake_body_part(position: Vector2) -> Sprite2D:
 	var part = Sprite2D.new()
@@ -164,7 +165,11 @@ func get_reward():
 	return reward
 
 func grow_snake():
-	var last_body_part = snake_body[snake_body.size() - 1]
+	var last_body_part
+	if snake_body.size() == 0:
+		last_body_part = snake[0]
+	else:
+		last_body_part = snake_body[-1]
 	var new_body_part_position = last_body_part.position - snake_direction * tile_size
 	var new_body_part = create_snake_body_part(new_body_part_position)
 	snake_body.append(new_body_part)
