@@ -27,10 +27,10 @@ var q_network_config = {
 	"is_learning": true,
 	"use_target_network": true,
 	"update_target_every_steps": 500,
-	"memory_capacity": 300,
-	"batch_size": 64,
-	"l2_regularization_strength": 0.001,
-	"use_l2_regularization": true,
+	"memory_capacity": 500,
+	"batch_size": 128,
+	"l2_regularization_strength": 0.01,
+	"use_l2_regularization": false,
 }
 
 func _ready():
@@ -151,7 +151,7 @@ func get_reward():
 
 	if snake[0].position == food.position:
 		score += 1
-		print("ai won")
+		#print("ai won")
 		food.queue_free()
 		spawn_food()
 		grow_snake()

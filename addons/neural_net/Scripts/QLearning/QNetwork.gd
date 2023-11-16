@@ -137,6 +137,7 @@ func save(path):
 
 func load(path, continue_learning: bool = false):
 	neural_network.load(path)
+	update_target_network()
 	is_learning = continue_learning
 	use_replay = continue_learning
 

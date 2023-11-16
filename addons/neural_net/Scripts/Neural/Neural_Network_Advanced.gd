@@ -42,7 +42,7 @@ func predict(input_array: Array) -> Array:
 		var map: Matrix = Matrix.map(sum, layer.activation.function)
 		inputs = map
 	return Matrix.to_array(inputs)
-#
+
 func train(input_array: Array, target_array: Array):
 	var inputs: Matrix = Matrix.from_array(input_array)
 	var targets: Matrix = Matrix.from_array(target_array)
@@ -80,6 +80,11 @@ func train(input_array: Array, target_array: Array):
 				weight_delta = Matrix.dot_product(gradients, Matrix.transpose(inputs))
 			else:
 				weight_delta = Matrix.dot_product(gradients, Matrix.transpose(outputs[layer_index - 1]))
+			
+			# Update weights with L2 Regularization
+			if use_l2_regularization:
+				var l2_penalty: Matrix = Matrix.scalar(layer.weights, 2 * l2_regularization_strength)
+				weight_delta = Matrix.subtract(weight_delta, l2_penalty)
 			network[layer_index].weights = Matrix.add(layer.weights, weight_delta)
 			network[layer_index].bias = Matrix.add(layer.bias, gradients)
 		else:
@@ -98,7 +103,7 @@ func train(input_array: Array, target_array: Array):
 				inputs_t = Matrix.transpose(inputs)
 			var weight_delta = Matrix.dot_product(hidden_gradient, inputs_t)
 			
-					# Update weights with L2 Regularization
+			# Update weights with L2 Regularization
 			if use_l2_regularization:
 				var l2_penalty: Matrix = Matrix.scalar(layer.weights, 2 * l2_regularization_strength)
 				weight_delta = Matrix.subtract(weight_delta, l2_penalty)
