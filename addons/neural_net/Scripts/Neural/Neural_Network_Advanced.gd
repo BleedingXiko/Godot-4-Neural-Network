@@ -6,6 +6,8 @@ var ACTIVATIONS = Activation.new().functions
 
 
 var learning_rate: float = 0.5
+var use_l2_regularization: bool = false
+var l2_regularization_strength: float = 0.001
 
 var layer_structure = []
 
@@ -96,9 +98,33 @@ func train(input_array: Array, target_array: Array):
 				inputs_t = Matrix.transpose(inputs)
 			var weight_delta = Matrix.dot_product(hidden_gradient, inputs_t)
 			
+					# Update weights with L2 Regularization
+			if use_l2_regularization:
+				var l2_penalty: Matrix = Matrix.scalar(layer.weights, 2 * l2_regularization_strength)
+				weight_delta = Matrix.subtract(weight_delta, l2_penalty)
 			network[layer_index].weights = Matrix.add(layer.weights, weight_delta)
 			network[layer_index].bias = Matrix.add(layer.bias, hidden_gradient)
 			
+
+func copy() -> NeuralNetworkAdvanced:
+	var new_network = NeuralNetworkAdvanced.new()
+	for layer in network:
+		var layer_copy: Dictionary = {
+			"weights": Matrix.copy(layer.weights),  # Copy weights
+			"bias": Matrix.copy(layer.bias),       # Copy biases
+			"activation": layer.activation        # Copy activation function
+		}
+		new_network.network.push_back(layer_copy)
+		
+	new_network.learning_rate = learning_rate
+	new_network.layer_structure = layer_structure.duplicate()
+	new_network.use_l2_regularization = use_l2_regularization
+	new_network.l2_regularization_strength = l2_regularization_strength
+	# Copy other necessary properties if there are any
+
+	return new_network
+
+
 
 func get_inputs_from_raycasts() -> Array:
 	assert(raycasts.size() != 0, "Can not get inputs from RayCasts that are not set!")

@@ -16,15 +16,25 @@ var manhattan_distance = 0
 
 var ACTIVATIONS = Activation.new().functions
 
+var q_network_config = {
+	"exploration_probability": 1.0,
+	"exploration_decreasing_decay": 0.01,
+	"min_exploration_probability": 0.05,
+	"discounted_factor": 0.9,
+	"learning_rate": 0.01,
+	"decay_per_steps": 100,
+	"use_replay": true,
+	"is_learning": true,
+	"use_target_network": true,
+	"update_target_every_steps": 500,
+	"memory_capacity": 300,
+	"batch_size": 64,
+	"l2_regularization_strength": 0.001,
+	"use_l2_regularization": true,
+}
+
 func _ready():
-	#sigmoid required for this example, exploding weights happens on most others
-	qnet = QNetwork.new(12, [6,8], 4, ACTIVATIONS.SIGMOID, ACTIVATIONS.SIGMOID, true, true) # 4 actions
-	qnet.memory_capacity = 500
-	qnet.batch_size = 80
-	qnet.is_learning = true
-	qnet.min_exploration_probability = 0.05
-	qnet.learning_rate = 0.001
-	qnet.decay_per_steps = 300
+	qnet = QNetwork.new(12, [8], 4, ACTIVATIONS.RELU, ACTIVATIONS.SIGMOID, q_network_config) # 4 actions
 	create_grid()
 	reset_game()
 	setup_timer()

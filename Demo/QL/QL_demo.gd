@@ -15,14 +15,20 @@ var total_iteration_rewards: Array[float] = []
 var current_iteration_rewards: float = 0.0
 var done: bool = false
 
+var q_table_config = {
+	"print_debug_info": true,
+	"exploration_decreasing_decay": 0.01,
+	"min_exploration_probability": 0.05,
+	"discounted_factor": 0.9,
+	"learning_rate": 0.1,
+	"decay_per_steps": 100,
+	"MAX_STATE_VALUE": 2
+	
+	
+}
+
 func _ready() -> void:
-	qt = QTable.new(36 * 3, 4,2, true)
-	qt.print_debug_info = true
-	qt.exploration_decreasing_decay = 0.01 # Exploration decay
-	qt.min_exploration_probability = 0.05 # Minimum exploration probability
-	qt.discounted_factor = 0.9 # Discount factor (gamma)
-	qt.learning_rate = 0.2 # Learning rate
-	qt.decay_per_steps = 100
+	qt = QTable.new(36 * 3, 4, q_table_config)
 
 
 func _process(_delta: float) -> void:

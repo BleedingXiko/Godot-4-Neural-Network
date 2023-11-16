@@ -5,11 +5,18 @@ var action_spaces: int
 var neural_network: NeuralNetworkAdvanced
 
 # Hyper-parameters
+# Optional target network
+var use_target_network: bool = true
+var target_neural_network: NeuralNetworkAdvanced
+var update_target_every_steps: int = 1000
+
 var exploration_probability: float = 1.0
 var exploration_decreasing_decay: float = 0.01
 var min_exploration_probability: float = 0.05
 var discounted_factor: float = 0.9
 var learning_rate: float = 0.2
+var use_l2_regularization: bool = true
+var l2_regularization_strength: float = 0.001
 var decay_per_steps: int = 100
 
 # Replay memory
@@ -26,16 +33,37 @@ var use_replay: bool = false
 var previous_state: Array = []
 var previous_action: int
 
-func _init(n_features: int, n_nodes: Array[int], n_action_spaces: int, hidden: Dictionary, output: Dictionary,_use_replay: bool = false, _is_learning: bool = true) -> void:
+func _init(n_features: int, n_nodes: Array[int], n_action_spaces: int, hidden: Dictionary, output: Dictionary, config: Dictionary) -> void:
 	observation_space = n_features
 	action_spaces = n_action_spaces
-	is_learning = _is_learning
-	use_replay = _use_replay
 
-	# Initialize the neural network
+
+	# Configuring hyper-parameters from the config dictionary
+	exploration_probability = config.get("exploration_probability", exploration_probability)
+	exploration_decreasing_decay = config.get("exploration_decreasing_decay", exploration_decreasing_decay)
+	min_exploration_probability = config.get("min_exploration_probability", min_exploration_probability)
+	discounted_factor = config.get("discounted_factor", discounted_factor)
+	decay_per_steps = config.get("decay_per_steps", decay_per_steps)
+	use_replay = config.get("use_replay", use_replay)
+	is_learning = config.get("is_learning", is_learning)
+	learning_rate = config.get("learning_rate", learning_rate)
+	use_target_network = config.get("use_target_network", use_target_network)
+	update_target_every_steps = config.get("update_target_every_steps", update_target_every_steps)
+	memory_capacity = config.get("memory_capacity", memory_capacity)
+	batch_size = config.get("batch_size", batch_size)
+	use_l2_regularization = config.get("use_l2_regularization", use_l2_regularization)
+	l2_regularization_strength = config.get("l2_regularization_strength", l2_regularization_strength)
+	decay_per_steps = config.get("decay_per_steps", decay_per_steps)
+
+	# Initialize the neural network with fixed architecture
 	neural_network = NeuralNetworkAdvanced.new()
 	neural_network.make(n_features, n_nodes, action_spaces, hidden, output)
 	neural_network.learning_rate = learning_rate
+	neural_network.use_l2_regularization = use_l2_regularization
+	neural_network.l2_regularization_strength = l2_regularization_strength
+	# Initialize the target network if required
+	if use_target_network:
+		target_neural_network = neural_network.copy()
 
 func add_to_memory(state, action, reward, next_state, done):
 	if replay_memory.size() >= memory_capacity:
@@ -49,14 +77,25 @@ func sample_memory():
 		batch.append(replay_memory[random_index])
 	return batch
 
+func update_target_network():
+	if use_target_network:
+		print("updated Target Network")
+		target_neural_network = neural_network.copy()
+
 func train_batch(batch):
 	for experience in batch:
 		#var current_q_values = neural_network.predict(experience["state"])
-		var max_future_q = neural_network.predict(experience["next_state"]).max()
+		var max_future_q: float
+		if use_target_network:
+			max_future_q = target_neural_network.predict(experience["next_state"]).max()
+		else:
+			max_future_q = neural_network.predict(experience["next_state"]).max()
 		var target_q_value = experience["reward"] + discounted_factor * max_future_q if not experience["done"] else experience["reward"]
 		var target_q_values = neural_network.predict(experience["state"])
 		target_q_values[experience["action"]] = target_q_value
 		neural_network.train(experience["state"], target_q_values)
+	if use_target_network and steps_completed % update_target_every_steps == 0:
+		update_target_network()
 
 func predict(current_states: Array, reward_of_previous_state: float) -> int:
 	var current_q_values = neural_network.predict(current_states)

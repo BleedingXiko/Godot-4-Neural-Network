@@ -8,6 +8,9 @@ func _ready() -> void:
 	nnas.add_layer(6, nnas.ACTIVATIONS.TANH)
 	nnas.add_layer(1, nnas.ACTIVATIONS.SIGMOID)
 	nnas.learning_rate = 0.1
+	nnas.use_l2_regularization = false
+	nnas.l2_regularization_strength = 0.001
+	
 	
 	for i in range(1200):
 		nnas.train([0,0], [0])

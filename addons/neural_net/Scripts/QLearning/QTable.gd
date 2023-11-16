@@ -25,11 +25,18 @@ var MAX_STATE_VALUE: int = 2 # Insures each composite state will be unique and n
 var is_learning: bool = true
 var print_debug_info: bool = false
 
-func _init(n_observations: int, n_action_spaces: int, max_state: int = 2, _is_learning: bool = true) -> void:
+func _init(n_observations: int, n_action_spaces: int, config: Dictionary) -> void:
 	observation_space = n_observations
 	action_spaces = n_action_spaces
-	is_learning = _is_learning
-	MAX_STATE_VALUE = max_state
+	
+	is_learning = config.get("is_learning", is_learning)
+	MAX_STATE_VALUE = config.get("MAX_STATE_VALUE", MAX_STATE_VALUE)
+	exploration_decreasing_decay = config.get("exploration_decreasing_decay", exploration_decreasing_decay)
+	min_exploration_probability = config.get("min_exploration_probability", min_exploration_probability)
+	discounted_factor = config.get("discounted_factor", discounted_factor)
+	learning_rate = config.get("learning_rate", learning_rate)
+	decay_per_steps = config.get("decay_per_steps", decay_per_steps)
+	print_debug_info = config.get("print_debug_info", print_debug_info)
 	Table = Matrix.new(observation_space, action_spaces)
 	#QTable = Matrix.rand(Matrix.new(observation_space, action_spaces))
 	# Optionally initialize QTable with random values
