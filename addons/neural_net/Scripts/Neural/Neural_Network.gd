@@ -1,42 +1,6 @@
 class_name NeuralNetwork
 
-var ACTIVATIONS: Dictionary = {
-	"SIGMOID": {
-		"function": Callable(Activation, "sigmoid"),
-		"derivative": Callable(Activation, "dsigmoid"),
-		"name": "SIGMOID",
-	},
-	"RELU": {
-		"function": Callable(Activation, "relu"),
-		"derivative": Callable(Activation, "drelu"),
-		"name": "RELU"
-	},
-	"TANH": {
-		"function": Callable(Activation, "tanh_"),
-		"derivative": Callable(Activation, "dtanh"),
-		"name": "TANH"
-	},
-	"ARCTAN": {
-		"function": Callable(Activation, "arcTan"),
-		"derivative": Callable(Activation, "darcTan"),
-		"name": "ARCTAN"
-	},
-	"PRELU": {
-		"function": Callable(Activation, "prelu"),
-		"derivative": Callable(Activation, "dprelu"),
-		"name": "PRELU"
-	},
-	"ELU": {
-		"function": Callable(Activation, "elu"),
-		"derivative": Callable(Activation, "delu"),
-		"name": "ELU"
-	},
-	"SOFTPLUS": {
-		"function": Callable(Activation, "softplus"),
-		"derivative": Callable(Activation, "dsoftplus"),
-		"name": "SOFTPLUS"
-	}
-}
+var ACTIVATIONS = Activation.new().functions
 
 var best: bool = false
 var input_nodes: int
@@ -237,4 +201,5 @@ static func load(path) -> NeuralNetwork:
 	nn.set_activation_function(nn.ACTIVATIONS[data.hidden_activation], nn.ACTIVATIONS[data.output_activation])
 	nn.set_nn_color()
 	
+	file.close()
 	return nn

@@ -1,8 +1,9 @@
 extends Node2D
 
 var qnet: QNetwork
-var grid_size: Vector2 = Vector2(10, 10)
+var grid_size: Vector2 = Vector2(6, 6)
 var snake = []
+var snake_body = []  # Holds the snake body parts
 var food
 @onready var food_timer = $Timer
 @onready var game_timer = $Timer2
@@ -11,65 +12,35 @@ var score = 0
 var previous_reward: float = 0.0
 var snake_direction = Vector2(0, -1)
 var tile_size = 20
-
 var manhattan_distance = 0
 
-var ACTIVATIONS: Dictionary = {
-	"SIGMOID": {
-		"function": Callable(Activation, "sigmoid"),
-		"derivative": Callable(Activation, "dsigmoid"),
-		"name": "SIGMOID",
-	},
-	"RELU": {
-		"function": Callable(Activation, "relu"),
-		"derivative": Callable(Activation, "drelu"),
-		"name": "RELU"
-	},
-	"TANH": {
-		"function": Callable(Activation, "tanh_"),
-		"derivative": Callable(Activation, "dtanh"),
-		"name": "TANH"
-	},
-	"ARCTAN": {
-		"function": Callable(Activation, "arcTan"),
-		"derivative": Callable(Activation, "darcTan"),
-		"name": "ARCTAN"
-	},
-	"PRELU": {
-		"function": Callable(Activation, "prelu"),
-		"derivative": Callable(Activation, "dprelu"),
-		"name": "PRELU"
-	},
-	"ELU": {
-		"function": Callable(Activation, "elu"),
-		"derivative": Callable(Activation, "delu"),
-		"name": "ELU"
-	},
-	"SOFTPLUS": {
-		"function": Callable(Activation, "softplus"),
-		"derivative": Callable(Activation, "dsoftplus"),
-		"name": "SOFTPLUS"
-	}
-}
+var ACTIVATIONS = Activation.new().functions
 
 func _ready():
-	qnet = QNetwork.new(5, [8], 4, ACTIVATIONS.TANH, ACTIVATIONS.SIGMOID, true, true) # 4 actions
-	qnet.memory_capacity = 800
-	qnet.batch_size = 128
+	#sigmoid required for this example, exploding gradient descent happens on most others
+	qnet = QNetwork.new(12, [6,8], 4, ACTIVATIONS.SIGMOID, ACTIVATIONS.SIGMOID, true, true) # 4 actions
+	qnet.memory_capacity = 500
+	qnet.batch_size = 256
 	qnet.is_learning = true
 	qnet.min_exploration_probability = 0.05
-	qnet.learning_rate = 0.01
+	qnet.learning_rate = 0.0001
 	qnet.decay_per_steps = 300
-	#qnet.print_debug_info = true
 	create_grid()
 	reset_game()
 	setup_timer()
 	update_manhattan_distance()
 
+func _input(event):
+	if event.is_action_pressed("ui_up"):
+		qnet.save("./qnetwork.data")
+	if event.is_action_pressed("ui_down"):
+		qnet.load("./qnetwork.data", true)
+
 func update_manhattan_distance():
 	var distance_x = abs(snake[0].position.x - food.position.x)
 	var distance_y = abs(snake[0].position.y - food.position.y)
 	manhattan_distance = int(distance_x + distance_y)
+
 func setup_timer():
 	food_timer.wait_time = 50
 	food_timer.autostart = true
@@ -91,6 +62,9 @@ func reset_game():
 	for segment in snake:
 		segment.queue_free()
 	snake.clear()
+	for body_part in snake_body:
+		body_part.queue_free()
+	snake_body.clear()
 
 	spawn_snake()
 	spawn_food()
@@ -106,6 +80,19 @@ func spawn_snake():
 	add_child(snake_head)
 	snake.append(snake_head)
 
+	var body_part = create_snake_body_part(snake_head.position - Vector2(0, tile_size))
+	snake_body.append(body_part)
+
+func create_snake_body_part(position: Vector2) -> Sprite2D:
+	var part = Sprite2D.new()
+	part.texture = load("res://icon.svg")
+	part.modulate = Color(0.5, 0, 0) # Yellow color for snake body
+	part.position = position
+	part.scale = Vector2(0.15, 0.15)
+	add_child(part)  # Add the body part to the scene
+	return part
+
+
 func spawn_food():
 	for child in get_children():
 		if child.is_in_group("food"):
@@ -119,7 +106,6 @@ func spawn_food():
 	food.scale = Vector2(0.15, 0.15)
 	add_child(food)
 
-
 func _on_game_timeout():
 	var action = qnet.predict(get_state(), previous_reward)
 	previous_reward = get_reward()
@@ -128,15 +114,22 @@ func _on_game_timeout():
 
 func get_state():
 	var state = []
-	var snake_pos = snake[0].position / tile_size
-	var food_pos = food.position / tile_size
-	state.append(snake_pos.x)
-	state.append(snake_pos.y)
-	state.append(food_pos.x)
-	state.append(food_pos.y)
-	state.append(score)
-#	state.append(snake_direction.x) # Add snake's current direction to the state
-#	state.append(snake_direction.y)
+	state.append(snake[0].position.x / (grid_size.x * tile_size - 1))
+	state.append(snake[0].position.y / (grid_size.x * tile_size - 1))
+	state.append(food.position.x / (grid_size.x * tile_size - 1))
+	state.append(food.position.y / (grid_size.x * tile_size - 1))
+	state.append(snake_direction.x / (grid_size.x * tile_size - 1))
+	state.append(snake_direction.y / (grid_size.x * tile_size - 1))
+
+	# Include positions of the three closest body parts
+	for i in range(3):
+		if i < snake_body.size():
+			state.append(snake_body[i].position.x / (grid_size.x * tile_size - 1))
+			state.append(snake_body[i].position.y / (grid_size.x * tile_size - 1))
+		else:
+			state.append(0)  # Placeholder for x-coordinate
+			state.append(0)  # Placeholder for y-coordinate
+	#print(state)
 	return state
 
 func get_reward():
@@ -150,37 +143,66 @@ func get_reward():
 		print("ai won")
 		food.queue_free()
 		spawn_food()
-		reward += 50
+		grow_snake()
+		reward += 10
 	elif snake[0].position.x < 0 or snake[0].position.x >= grid_size.x * tile_size or snake[0].position.y < 0 or snake[0].position.y >= grid_size.y * tile_size:
-		reward += -20
+		reward += -5
 	else:
 		if new_manhattan_distance < manhattan_distance:
-			reward += 5
+			reward += 1
 		elif new_manhattan_distance > manhattan_distance:
+			reward += -0.5
+
+	# Check for self-collision
+	for body_part in snake_body:
+		if snake[0].position == body_part.position:
 			reward += -10
+			reset_game()
+			break
 
-	manhattan_distance = new_manhattan_distance  # Update the global distance
-
+	manhattan_distance = new_manhattan_distance
 	return reward
+
+func grow_snake():
+	var last_body_part = snake_body[snake_body.size() - 1]
+	var new_body_part_position = last_body_part.position - snake_direction * tile_size
+	var new_body_part = create_snake_body_part(new_body_part_position)
+	snake_body.append(new_body_part)
+
+
+func _get_position(body_part):
+	return body_part.position
 
 
 func move_snake(direction):
+	var new_direction = Vector2.ZERO
 	match direction:
-		0: snake_direction = Vector2(0, -1)
-		1: snake_direction = Vector2(0, 1)
-		2: snake_direction = Vector2(-1, 0)
-		3: snake_direction = Vector2(1, 0)
+		0: new_direction = Vector2(0, -1)
+		1: new_direction = Vector2(0, 1)
+		2: new_direction = Vector2(-1, 0)
+		3: new_direction = Vector2(1, 0)
 
-	var new_position = snake[0].position + snake_direction * tile_size
-	if is_position_valid(new_position):
-		snake[0].position = new_position
+	# Prevent reversing direction
+	if new_direction + snake_direction != Vector2.ZERO:
+		snake_direction = new_direction
+
+	var new_head_position = snake[0].position + snake_direction * tile_size
+
+	if is_position_valid(new_head_position):
+		# Move body parts
+		for i in range(snake_body.size() - 1, 0, -1):
+			snake_body[i].position = snake_body[i - 1].position
+		if snake_body.size() > 0:
+			snake_body[0].position = snake[0].position
+
+		# Move head
+		snake[0].position = new_head_position
 	else:
 		reset_game()
 
+
 func is_position_valid(position: Vector2) -> bool:
 	return position.x >= 0 and position.x < grid_size.x * tile_size and position.y >= 0 and position.y < grid_size.y * tile_size
-
-	# Implement self-collision logic if the snake can grow
 
 func update_score():
 	score_label.text = "Score: " + str(score)

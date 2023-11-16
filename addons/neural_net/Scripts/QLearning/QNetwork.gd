@@ -51,7 +51,7 @@ func sample_memory():
 
 func train_batch(batch):
 	for experience in batch:
-		var current_q_values = neural_network.predict(experience["state"])
+		#var current_q_values = neural_network.predict(experience["state"])
 		var max_future_q = neural_network.predict(experience["next_state"]).max()
 		var target_q_value = experience["reward"] + discounted_factor * max_future_q if not experience["done"] else experience["reward"]
 		var target_q_values = neural_network.predict(experience["state"])
@@ -63,11 +63,12 @@ func predict(current_states: Array, reward_of_previous_state: float) -> int:
 	
 	if is_learning and previous_state.size() != 0:
 		#var old_q_value = neural_network.predict(previous_state)[previous_action]
-		var max_future_q = current_q_values.max()
-		var target_q_value = reward_of_previous_state + discounted_factor * max_future_q
-		var target_q_values = neural_network.predict(previous_state)
-		target_q_values[previous_action] = target_q_value
-		neural_network.train(previous_state, target_q_values)
+		if !use_replay:
+			var max_future_q = current_q_values.max()
+			var target_q_value = reward_of_previous_state + discounted_factor * max_future_q
+			var target_q_values = neural_network.predict(previous_state)
+			target_q_values[previous_action] = target_q_value
+			neural_network.train(previous_state, target_q_values)
 		
 		if use_replay:
 			add_to_memory(previous_state, previous_action, reward_of_previous_state, current_states, false) # 'false' for 'done' flag; update as necessary
@@ -90,3 +91,14 @@ func predict(current_states: Array, reward_of_previous_state: float) -> int:
 	
 	steps_completed += 1
 	return action_to_take
+
+
+func save(path):
+	neural_network.save(path)
+
+func load(path, continue_learning: bool = false):
+	neural_network.load(path)
+	is_learning = continue_learning
+	use_replay = continue_learning
+
+

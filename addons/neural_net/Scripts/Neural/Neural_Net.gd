@@ -1,42 +1,6 @@
 extends Node2D
 
-var ACTIVATIONS: Dictionary = {
-	"SIGMOID": {
-		"function": Callable(Activation, "sigmoid"),
-		"derivative": Callable(Activation, "dsigmoid"),
-		"name": "SIGMOID",
-	},
-	"RELU": {
-		"function": Callable(Activation, "relu"),
-		"derivative": Callable(Activation, "drelu"),
-		"name": "RELU"
-	},
-	"TANH": {
-		"function": Callable(Activation, "tanh_"),
-		"derivative": Callable(Activation, "dtanh"),
-		"name": "TANH"
-	},
-	"ARCTAN": {
-		"function": Callable(Activation, "arcTan"),
-		"derivative": Callable(Activation, "darcTan"),
-		"name": "ARCTAN"
-	},
-	"PRELU": {
-		"function": Callable(Activation, "prelu"),
-		"derivative": Callable(Activation, "dprelu"),
-		"name": "PRELU"
-	},
-	"ELU": {
-		"function": Callable(Activation, "elu"),
-		"derivative": Callable(Activation, "delu"),
-		"name": "ELU"
-	},
-	"SOFTPLUS": {
-		"function": Callable(Activation, "softplus"),
-		"derivative": Callable(Activation, "dsoftplus"),
-		"name": "SOFTPLUS"
-	}
-}
+var ACTIVATIONS = Activation.new().functions
 
 
 @export var AI_Scene: PackedScene
@@ -102,9 +66,10 @@ func _ready():
 	
 	spawn()
 
-func spawn_loaded(nn: NeuralNetwork):
+func spawn_loaded():
+	var loaded_net = NeuralNetwork.load(save_path)
 	var new_ai = AI_Scene.instantiate()
-	new_ai.nn = NeuralNetwork.copy(nn)
+	new_ai.nn = NeuralNetwork.copy(loaded_net)
 	call_deferred("add_child", new_ai)
 
 func spawn():
@@ -162,6 +127,7 @@ func spawn():
 						randomize()
 						var _new_ai = AI_Scene.instantiate()
 						_new_ai.nn = NeuralNetwork.new(input_nodes, hidden_nodes, output_nodes)
+						new_ai.nn.set_activation_function(ACTIVATIONS[hidden_activation], ACTIVATIONS[output_activation])
 						spawn_population.append(_new_ai)
 	setting_up = true
 	for ai in spawn_population:
