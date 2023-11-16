@@ -12,15 +12,12 @@ When utilizing the `Neural Net` genetic algorithm, adhere to the following rules
 
 1.  Variable Naming: The variable for the Neural Network must be named `nn`.
 
-    gdscriptCopy code
-
     `var nn: NeuralNetwork`
 
     This is essential as the `Neural Net` algorithm functions only when the network is named `nn`.
 
 2.  Variable Declaration: Do not assign any value to the `nn` variable upon declaration.
 
-    gdscriptCopy code
 
     `var nn: NeuralNetwork`
 
@@ -28,7 +25,6 @@ When utilizing the `Neural Net` genetic algorithm, adhere to the following rules
 
 3.  Handling AI/Player Removal: Use the `queue_free()` method for removing AI or player nodes.
 
-    gdscriptCopy code
 
     `Object.queue_free()`
 
@@ -45,13 +41,9 @@ A basic neural network capable of customization, training, and prediction.
 
 #### Initialization
 
-gdscriptCopy code
-
 `var nn = NeuralNetwork.new(input_nodes, hidden_nodes, output_nodes)`
 
 #### Prediction
-
-gdscriptCopy code
 
 `var output = nn.predict(input_array)`
 
@@ -66,8 +58,6 @@ An advanced version of the Neural Network with more complex features.
 
 #### Initialization
 
-gdscriptCopy code
-
 `var nn_advanced = NeuralNetworkAdvanced.new({
     "learning_rate": 0.1,
     "use_l2_regularization": true,
@@ -76,8 +66,6 @@ gdscriptCopy code
 nn_advanced.add_layer(nodes, activation_function)`
 
 #### Prediction
-
-gdscriptCopy code
 
 `var output = nn_advanced.predict(input_array)`
 
@@ -94,8 +82,6 @@ Implements the Q-Learning algorithm for reinforcement learning.
 
 Include configuration parameters like learning rate, exploration probability, and decay settings.
 
-gdscriptCopy code
-
 `var qtable = QTable.new(n_observations, n_action_spaces, {
     "learning_rate": 0.2,
     "exploration_probability": 1.0,
@@ -108,8 +94,6 @@ gdscriptCopy code
 })`
 
 #### Predicting Action
-
-gdscriptCopy code
 
 `var action = qtable.predict(current_states, reward_of_previous_state)`
 
@@ -125,8 +109,6 @@ Combines neural networks with Q-Learning for complex decision-making.
 #### Initialization
 
 Include configuration parameters like exploration settings, learning rate, and network architecture.
-
-gdscriptCopy code
 
 `var qnetwork = QNetwork.new({
     "exploration_probability": 1.0,
@@ -146,8 +128,6 @@ gdscriptCopy code
 qnetwork.add_layer(nodes, activation_function)`
 
 #### Predicting Action
-
-gdscriptCopy code
 
 `var action = qnetwork.predict(current_states, reward_of_previous_state)`
 
