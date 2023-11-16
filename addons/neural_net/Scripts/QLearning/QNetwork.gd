@@ -1,7 +1,5 @@
 class_name QNetwork
 
-var observation_space: int
-var action_spaces: int
 var neural_network: NeuralNetworkAdvanced
 
 # Hyper-parameters
@@ -33,9 +31,7 @@ var use_replay: bool = false
 var previous_state: Array = []
 var previous_action: int
 
-func _init(n_features: int, n_nodes: Array[int], n_action_spaces: int, hidden: Dictionary, output: Dictionary, config: Dictionary) -> void:
-	observation_space = n_features
-	action_spaces = n_action_spaces
+func _init(config: Dictionary) -> void:
 
 
 	# Configuring hyper-parameters from the config dictionary
@@ -56,14 +52,13 @@ func _init(n_features: int, n_nodes: Array[int], n_action_spaces: int, hidden: D
 	decay_per_steps = config.get("decay_per_steps", decay_per_steps)
 
 	# Initialize the neural network with fixed architecture
-	neural_network = NeuralNetworkAdvanced.new()
-	neural_network.make(n_features, n_nodes, action_spaces, hidden, output)
-	neural_network.learning_rate = learning_rate
-	neural_network.use_l2_regularization = use_l2_regularization
-	neural_network.l2_regularization_strength = l2_regularization_strength
+	neural_network = NeuralNetworkAdvanced.new(config)
 	# Initialize the target network if required
 	if use_target_network:
 		target_neural_network = neural_network.copy()
+
+func add_layer(nodes: int, function: Dictionary = neural_network.ACTIVATIONS.SIGMOID):
+	neural_network.add_layer(nodes, function)
 
 func add_to_memory(state, action, reward, next_state, done):
 	if replay_memory.size() >= memory_capacity:
@@ -120,7 +115,7 @@ func predict(current_states: Array, reward_of_previous_state: float) -> int:
 
 	var action_to_take: int
 	if randf() < exploration_probability:
-		action_to_take = randi() % action_spaces
+		action_to_take = randi() % current_q_values.size()
 	else:
 		action_to_take = current_q_values.find(current_q_values.max())
 

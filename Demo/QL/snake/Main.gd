@@ -21,20 +21,25 @@ var q_network_config = {
 	"exploration_decreasing_decay": 0.01,
 	"min_exploration_probability": 0.05,
 	"discounted_factor": 0.9,
-	"learning_rate": 0.001,
 	"decay_per_steps": 100,
 	"use_replay": true,
 	"is_learning": true,
 	"use_target_network": true,
 	"update_target_every_steps": 500,
 	"memory_capacity": 500,
-	"batch_size": 128,
-	"l2_regularization_strength": 0.1,
+	"batch_size": 128, 
+	#used by the neural network
+	"learning_rate": 0.00001, 
+	"l2_regularization_strength": 0.0001,
 	"use_l2_regularization": false,
 }
 
 func _ready():
-	qnet = QNetwork.new(12, [8], 4, ACTIVATIONS.RELU, ACTIVATIONS.SIGMOID, q_network_config) # 4 actions
+	qnet = QNetwork.new(q_network_config) #config is used by both qnet and neural network advanced
+	qnet.add_layer(12) #input nodes
+	qnet.add_layer(18, ACTIVATIONS.RELU) #hidden layer
+	qnet.add_layer(6, ACTIVATIONS.TANH) #hidden layer
+	qnet.add_layer(4, ACTIVATIONS.SIGMOID) # 4 actions
 	create_grid()
 	reset_game()
 	setup_timer()
@@ -144,35 +149,39 @@ func get_state():
 	return state
 
 func get_reward():
-	var reward = 0
+	var reward = 0.0
 	var new_distance_x = abs(snake[0].position.x - food.position.x)
 	var new_distance_y = abs(snake[0].position.y - food.position.y)
 	var new_manhattan_distance = int(new_distance_x + new_distance_y)
-
+	
+	# Reward for eating food
 	if snake[0].position == food.position:
 		score += 1
-		#print("ai won")
 		grow_snake()
 		food.queue_free()
 		spawn_food()
-		reward += 10
+		reward += 25  # Increase reward for eating food
+	
+	# Penalty for hitting the wall
 	elif snake[0].position.x < 0 or snake[0].position.x >= grid_size.x * tile_size or snake[0].position.y < 0 or snake[0].position.y >= grid_size.y * tile_size:
-		reward += -5
+		reward -= 50  # Increase penalty for hitting the wall
+	
+	# Reward/Penalty for moving towards/away from food
 	else:
 		if new_manhattan_distance < manhattan_distance:
-			reward += 1
+			reward += 5  # Increase reward for moving closer to food
 		elif new_manhattan_distance > manhattan_distance:
-			reward += -0.5
-
+			reward -= 1  # Mild penalty for moving away from food
 	# Check for self-collision
 	for body_part in snake_body:
 		if snake[0].position == body_part.position:
-			reward += -10
+			reward -= 100  # Large penalty for self-collision
 			reset_game()
 			break
-
+		
 	manhattan_distance = new_manhattan_distance
 	return reward
+
 
 func grow_snake():
 	var last_body_part

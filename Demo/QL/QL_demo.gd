@@ -22,9 +22,8 @@ var q_table_config = {
 	"discounted_factor": 0.9,
 	"learning_rate": 0.1,
 	"decay_per_steps": 100,
-	"MAX_STATE_VALUE": 2
-	
-	
+	"max_state_value": 2,
+	"random_weights": false,
 }
 
 func _ready() -> void:

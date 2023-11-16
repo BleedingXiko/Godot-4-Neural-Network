@@ -2,14 +2,17 @@ extends Node2D
 
 var nnas: NeuralNetworkAdvanced
 
+var network_config = {
+	"learning_rate": 0.1,
+	"l2_regularization_strength": 0.001,
+	"use_l2_regularization": false,
+}
+
 func _ready() -> void:
-	nnas = NeuralNetworkAdvanced.new()
+	nnas = NeuralNetworkAdvanced.new(network_config)
 	nnas.add_layer(2)
 	nnas.add_layer(6, nnas.ACTIVATIONS.TANH)
 	nnas.add_layer(1, nnas.ACTIVATIONS.SIGMOID)
-	nnas.learning_rate = 0.1
-	nnas.use_l2_regularization = false
-	nnas.l2_regularization_strength = 0.001
 	
 	
 #	for i in range(1200):

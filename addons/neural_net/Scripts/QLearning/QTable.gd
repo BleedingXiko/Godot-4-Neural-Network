@@ -16,12 +16,13 @@ var discounted_factor: float = 0.9 # Discount factor (gamma)
 var learning_rate: float = 0.2 # Learning rate
 var decay_per_steps: int = 100
 var steps_completed: int = 0
+var random_weights: bool = false
 
 # States
 var previous_state: int = -100 # Previous state
 var previous_action: int # Previous action taken
 
-var MAX_STATE_VALUE: int = 2 # Insures each composite state will be unique and needs to be within the bounds of the table
+var max_state_value: int = 2 # Insures each composite state will be unique and needs to be within the bounds of the table
 var is_learning: bool = true
 var print_debug_info: bool = false
 
@@ -30,14 +31,20 @@ func _init(n_observations: int, n_action_spaces: int, config: Dictionary) -> voi
 	action_spaces = n_action_spaces
 	
 	is_learning = config.get("is_learning", is_learning)
-	MAX_STATE_VALUE = config.get("MAX_STATE_VALUE", MAX_STATE_VALUE)
+	max_state_value = config.get("max_state_value", max_state_value)
 	exploration_decreasing_decay = config.get("exploration_decreasing_decay", exploration_decreasing_decay)
 	min_exploration_probability = config.get("min_exploration_probability", min_exploration_probability)
 	discounted_factor = config.get("discounted_factor", discounted_factor)
 	learning_rate = config.get("learning_rate", learning_rate)
 	decay_per_steps = config.get("decay_per_steps", decay_per_steps)
 	print_debug_info = config.get("print_debug_info", print_debug_info)
-	Table = Matrix.new(observation_space, action_spaces)
+	random_weights = config.get("random_weights", random_weights)
+	
+	if random_weights:
+		Table = Matrix.rand(Matrix.new(observation_space, action_spaces))
+	else:
+		Table = Matrix.new(observation_space, action_spaces)
+	
 	#QTable = Matrix.rand(Matrix.new(observation_space, action_spaces))
 	# Optionally initialize QTable with random values
 
@@ -80,7 +87,7 @@ func create_composite_state(current_states: Array) -> int:
 	var multiplier = 1
 	for state in current_states:
 		composite_state += state * multiplier
-		multiplier *= MAX_STATE_VALUE # Define MAX_STATE_VALUE based on your state ranges
+		multiplier *= max_state_value # Define max_state_value based on your state ranges
 	return composite_state
 
 

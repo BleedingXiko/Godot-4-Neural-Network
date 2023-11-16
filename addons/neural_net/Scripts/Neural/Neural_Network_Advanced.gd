@@ -5,7 +5,7 @@ var network: Array
 var ACTIVATIONS = Activation.new().functions
 
 
-var learning_rate: float = 0.5
+var learning_rate: float = 0.1
 var use_l2_regularization: bool = false
 var l2_regularization_strength: float = 0.001
 
@@ -13,14 +13,11 @@ var layer_structure = []
 
 var raycasts: Array[RayCast2D]
 
-func make(a: int, b: Array[int], c: int, hidden_func: Dictionary = ACTIVATIONS.TANH, output_func: Dictionary = ACTIVATIONS.SIGMOID):
-
-	add_layer(a)
-
-	for i in b:
-		add_layer(i, hidden_func)
-
-	add_layer(c, output_func)
+func _init(config: Dictionary):
+	learning_rate = config.get("learning_rate", learning_rate)
+	use_l2_regularization = config.get("use_l2_regularization", use_l2_regularization)
+	l2_regularization_strength = config.get("l2_regularization_strength", l2_regularization_strength)
+	
 
 func add_layer(nodes: int, activation: Dictionary = ACTIVATIONS.SIGMOID):
 	
@@ -112,7 +109,14 @@ func train(input_array: Array, target_array: Array):
 			
 
 func copy() -> NeuralNetworkAdvanced:
-	var new_network = NeuralNetworkAdvanced.new()
+	# Copy other necessary properties if there are any
+	var new_network = NeuralNetworkAdvanced.new(
+		{
+		"learning_rate": learning_rate,
+		"l2_regularization_strength": l2_regularization_strength,
+		"use_l2_regularization": use_l2_regularization
+		})
+		
 	for layer in network:
 		var layer_copy: Dictionary = {
 			"weights": Matrix.copy(layer.weights),  # Copy weights
@@ -121,11 +125,7 @@ func copy() -> NeuralNetworkAdvanced:
 		}
 		new_network.network.push_back(layer_copy)
 		
-	new_network.learning_rate = learning_rate
 	new_network.layer_structure = layer_structure.duplicate()
-	new_network.use_l2_regularization = use_l2_regularization
-	new_network.l2_regularization_strength = l2_regularization_strength
-	# Copy other necessary properties if there are any
 
 	return new_network
 
