@@ -21,7 +21,7 @@ var q_network_config = {
 	"exploration_decreasing_decay": 0.01,
 	"min_exploration_probability": 0.05,
 	"discounted_factor": 0.9,
-	"learning_rate": 0.005,
+	"learning_rate": 0.001,
 	"decay_per_steps": 100,
 	"use_replay": true,
 	"is_learning": true,
@@ -34,7 +34,7 @@ var q_network_config = {
 }
 
 func _ready():
-	qnet = QNetwork.new(12, [8], 4, ACTIVATIONS.TANH, ACTIVATIONS.SIGMOID, q_network_config) # 4 actions
+	qnet = QNetwork.new(12, [8], 4, ACTIVATIONS.RELU, ACTIVATIONS.SIGMOID, q_network_config) # 4 actions
 	create_grid()
 	reset_game()
 	setup_timer()

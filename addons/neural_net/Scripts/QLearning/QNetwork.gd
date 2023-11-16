@@ -94,26 +94,29 @@ func train_batch(batch):
 		var target_q_values = neural_network.predict(experience["state"])
 		target_q_values[experience["action"]] = target_q_value
 		neural_network.train(experience["state"], target_q_values)
-	if use_target_network and steps_completed % update_target_every_steps == 0:
-		update_target_network()
 
 func predict(current_states: Array, reward_of_previous_state: float) -> int:
 	var current_q_values = neural_network.predict(current_states)
 	
 	if is_learning and previous_state.size() != 0:
-		#var old_q_value = neural_network.predict(previous_state)[previous_action]
-		if !use_replay:
-			var max_future_q = current_q_values.max()
-			var target_q_value = reward_of_previous_state + discounted_factor * max_future_q
-			var target_q_values = neural_network.predict(previous_state)
-			target_q_values[previous_action] = target_q_value
-			neural_network.train(previous_state, target_q_values)
-		
 		if use_replay:
 			add_to_memory(previous_state, previous_action, reward_of_previous_state, current_states, false) # 'false' for 'done' flag; update as necessary
 			if replay_memory.size() >= batch_size:
 				var batch = sample_memory()
 				train_batch(batch)
+		else:
+			if use_target_network:
+				var max_future_q = target_neural_network.predict(current_q_values).max()
+				var target_q_value = reward_of_previous_state + discounted_factor * max_future_q
+				var target_q_values = neural_network.predict(previous_state)
+				target_q_values[previous_action] = target_q_value
+				neural_network.train(previous_state, target_q_values)
+			else:
+				var max_future_q = current_q_values.max()
+				var target_q_value = reward_of_previous_state + discounted_factor * max_future_q
+				var target_q_values = neural_network.predict(previous_state)
+				target_q_values[previous_action] = target_q_value
+				neural_network.train(previous_state, target_q_values)
 
 	var action_to_take: int
 	if randf() < exploration_probability:
@@ -124,6 +127,9 @@ func predict(current_states: Array, reward_of_previous_state: float) -> int:
 	if is_learning:
 		previous_state = current_states
 		previous_action = action_to_take
+	
+	if use_target_network and steps_completed % update_target_every_steps == 0:
+		update_target_network()
 
 	if steps_completed % decay_per_steps == 0:
 		exploration_probability = max(min_exploration_probability, exploration_probability - exploration_decreasing_decay)
