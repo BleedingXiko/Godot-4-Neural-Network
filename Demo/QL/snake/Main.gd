@@ -143,8 +143,8 @@ func get_state():
 			state.append(snake_body[i].position.x / (grid_size.x * tile_size - 1))
 			state.append(snake_body[i].position.y / (grid_size.x * tile_size - 1))
 		else:
-			state.append(0)  # Placeholder for x-coordinate
-			state.append(0)  # Placeholder for y-coordinate
+			state.append(-1)  # Placeholder for x-coordinate
+			state.append(-1)  # Placeholder for y-coordinate
 	#print(state)
 	return state
 
@@ -180,7 +180,7 @@ func get_reward():
 			break
 		
 	manhattan_distance = new_manhattan_distance
-	return reward
+	return reward + (snake_body.size() * 2)
 
 
 func grow_snake():

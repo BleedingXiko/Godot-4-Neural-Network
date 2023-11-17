@@ -100,14 +100,15 @@ func predict(current_states: Array, reward_of_previous_state: float) -> int:
 				var batch = sample_memory()
 				train_batch(batch)
 		else:
+			var max_future_q: int
 			if use_target_network:
-				var max_future_q = target_neural_network.predict(current_q_values).max()
+				max_future_q = target_neural_network.predict(current_states).max()
 				var target_q_value = reward_of_previous_state + discounted_factor * max_future_q
 				var target_q_values = neural_network.predict(previous_state)
 				target_q_values[previous_action] = target_q_value
 				neural_network.train(previous_state, target_q_values)
 			else:
-				var max_future_q = current_q_values.max()
+				max_future_q = current_q_values.max()
 				var target_q_value = reward_of_previous_state + discounted_factor * max_future_q
 				var target_q_values = neural_network.predict(previous_state)
 				target_q_values[previous_action] = target_q_value
@@ -140,6 +141,5 @@ func load(path, continue_learning: bool = false):
 	neural_network.load(path)
 	update_target_network()
 	is_learning = continue_learning
-	use_replay = continue_learning
 
 
