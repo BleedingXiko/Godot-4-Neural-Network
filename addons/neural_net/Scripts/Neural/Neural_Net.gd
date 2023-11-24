@@ -164,7 +164,7 @@ func reload_generation():
 	if use_reproduction: best_10_nn = best_10_nn.slice(best_10_nn.size() - top_value_cutoff, -1)
 	
 	if save_best:
-		best_10_nn[-1].save(save_path)
+		best_nn.save(save_path)
 	freeing = true
 	timer.stop()
 	

@@ -72,12 +72,11 @@ func predict(current_states: Array, reward_of_previous_state: float) -> int:
 		previous_action = action_to_take
 		if steps_completed % decay_per_steps == 0:
 			exploration_probability = max(min_exploration_probability, exploration_probability - exploration_decreasing_decay)
-
-	if print_debug_info and steps_completed % decay_per_steps == 0:
-		print("Total steps completed:", steps_completed)
-		print("Current exploration probability:", exploration_probability)
-		print("Q-Table data:", Table.data)
-		print("-----------------------------------------------------------------------------------------")
+			if print_debug_info:
+				print("Total steps completed:", steps_completed)
+				print("Current exploration probability:", exploration_probability)
+				print("Q-Table data:", Table.data)
+				print("-----------------------------------------------------------------------------------------")
 
 	steps_completed += 1
 	return action_to_take

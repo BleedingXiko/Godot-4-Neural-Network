@@ -174,6 +174,17 @@ func save(path: String):
 	file.close()
 	print(data_to_save)
 
+func debug():
+	var data = []
+	for layer in network:
+		var layer_data = {
+			"weights": layer.weights.save(),
+			"bias": layer.bias.save(),
+			"activation": layer.activation.name
+		}
+		data.append(layer_data)
+	return data
+
 func load(path: String):
 	var file = FileAccess.open(path, FileAccess.READ)
 	var data = file.get_var()

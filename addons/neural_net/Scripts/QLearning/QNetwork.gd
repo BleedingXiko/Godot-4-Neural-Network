@@ -16,6 +16,7 @@ var learning_rate: float = 0.2
 var use_l2_regularization: bool = true
 var l2_regularization_strength: float = 0.001
 var decay_per_steps: int = 100
+var print_debug_info: bool = false
 
 # Replay memory
 var memory_capacity: int = 300
@@ -50,6 +51,7 @@ func _init(config: Dictionary) -> void:
 	use_l2_regularization = config.get("use_l2_regularization", use_l2_regularization)
 	l2_regularization_strength = config.get("l2_regularization_strength", l2_regularization_strength)
 	decay_per_steps = config.get("decay_per_steps", decay_per_steps)
+	print_debug_info = config.get("print_debug_info", print_debug_info)
 
 	# Initialize the neural network with fixed architecture
 	neural_network = NeuralNetworkAdvanced.new(config)
@@ -129,6 +131,11 @@ func predict(current_states: Array, reward_of_previous_state: float) -> int:
 
 	if steps_completed % decay_per_steps == 0:
 		exploration_probability = max(min_exploration_probability, exploration_probability - exploration_decreasing_decay)
+		if print_debug_info:
+			print("Total steps completed:", steps_completed)
+			print("Current exploration probability:", exploration_probability)
+			print("Q-Net data:", neural_network.debug())
+			print("-----------------------------------------------------------------------------------------")
 	
 	steps_completed += 1
 	return action_to_take
