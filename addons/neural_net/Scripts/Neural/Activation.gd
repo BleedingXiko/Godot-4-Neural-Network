@@ -46,6 +46,11 @@ var functions: Dictionary = {
 		"function": Callable(Activation, "mish"),
 		"derivative": Callable(Activation, "dmish"),
 		"name": "MISH"
+	},
+	 "LINEAR": {
+		"function": Callable(Activation, "linear"),
+		"derivative": Callable(Activation, "dlinear"),
+		"name": "LINEAR"
 	}
 }
 
@@ -117,3 +122,10 @@ static func dmish(value: float, _row: int, _col: int) -> float:
 	var sp = softplus(value, _row, _col)
 	var tsp = tanh_(sp, _row, _col)
 	return tsp + value * dtanh(sp, _row, _col) * dsoftplus(value, _row, _col)
+
+static func linear(value: float, _row: int, _col: int) -> float:
+	return value
+
+static func dlinear(value: float, _row: int, _col: int) -> float:
+	return 1.0
+
