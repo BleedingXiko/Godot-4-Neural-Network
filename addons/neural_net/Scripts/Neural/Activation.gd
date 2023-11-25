@@ -36,6 +36,16 @@ var functions: Dictionary = {
 		"function": Callable(Activation, "softplus"),
 		"derivative": Callable(Activation, "dsoftplus"),
 		"name": "SOFTPLUS"
+	},
+	"SWISH": {
+		"function": Callable(Activation, "swish"),
+		"derivative": Callable(Activation, "dswish"),
+		"name": "SWISH"
+	},
+	"MISH": {
+		"function": Callable(Activation, "mish"),
+		"derivative": Callable(Activation, "dmish"),
+		"name": "MISH"
 	}
 }
 
@@ -88,9 +98,22 @@ static func delu(value: float, _row: int, _col: int) -> float:
 	else:
 		return 1.0
 
-
 static func softplus(value: float, _row: int, _col: int) -> float:
 	return log(1 + exp(value))
 
 static func dsoftplus(value: float, _row: int, _col: int) -> float:
 	return 1 / (1 + exp(-value))
+
+static func swish(value: float, _row: int, _col: int, beta: float = 1.0) -> float:
+	return value * sigmoid(beta * value, _row, _col)
+
+static func dswish(value: float, _row: int, _col: int, beta: float = 1.0) -> float:
+	return beta * value * dsigmoid(beta * value, _row, _col) + sigmoid(beta * value, _row, _col)
+
+static func mish(value: float, _row: int, _col: int) -> float:
+	return value * tanh_(softplus(value, _row, _col), _row, _col)
+
+static func dmish(value: float, _row: int, _col: int) -> float:
+	var sp = softplus(value, _row, _col)
+	var tsp = tanh_(sp, _row, _col)
+	return tsp + value * dtanh(sp, _row, _col) * dsoftplus(value, _row, _col)

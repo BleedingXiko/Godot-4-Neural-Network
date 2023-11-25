@@ -2500,12 +2500,12 @@ position = Vector2(43, 454)
 script = ExtResource("5_tewmy")
 AI_Scene = ExtResource("6_qs1wj")
 Batch_Size = 15
-Generation_Delay = 6
+Generation_Delay = 8
 save_best = false
 input_nodes = 9
-hidden_nodes = 8
+hidden_nodes = 3
 output_nodes = 2
-random_population = 24
+random_population = 6
 use_reproduction = true
 reproduced_population = 7
 

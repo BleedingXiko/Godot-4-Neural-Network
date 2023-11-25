@@ -8,6 +8,7 @@ var food
 @onready var food_timer = $Timer
 @onready var game_timer = $Timer2
 @onready var score_label = $Label
+@onready var expl_label = $Label2
 var score = 0
 var previous_reward: float = 0.0
 var snake_direction = Vector2(0, -1)
@@ -17,28 +18,28 @@ var manhattan_distance = 0
 var ACTIVATIONS = Activation.new().functions
 
 var q_network_config = {
+	"print_debug_info": true,
 	"exploration_probability": 1.0,
 	"exploration_decreasing_decay": 0.01,
 	"min_exploration_probability": 0.05,
-	"discounted_factor": 0.9,
-	"decay_per_steps": 100,
+	"discounted_factor": 0.95,
+	"decay_per_steps": 200,
 	"use_replay": true,
 	"is_learning": true,
 	"use_target_network": true,
-	"update_target_every_steps": 500,
-	"memory_capacity": 500,
+	"update_target_every_steps": 2000,
+	"memory_capacity": 760,
 	"batch_size": 128, 
 	#used by the neural network
-	"learning_rate": 0.00001, 
-	"l2_regularization_strength": 0.0001,
+	"learning_rate": 0.000001, 
+	"l2_regularization_strength": 0.001,
 	"use_l2_regularization": false,
 }
 
 func _ready():
 	qnet = QNetwork.new(q_network_config) #config is used by both qnet and neural network advanced
 	qnet.add_layer(12) #input nodes
-	qnet.add_layer(18, ACTIVATIONS.RELU) #hidden layer
-	qnet.add_layer(6, ACTIVATIONS.TANH) #hidden layer
+	qnet.add_layer(16, ACTIVATIONS.SWISH) #hidden layer
 	qnet.add_layer(4, ACTIVATIONS.SIGMOID) # 4 actions
 	create_grid()
 	reset_game()
@@ -84,14 +85,15 @@ func reset_game():
 	spawn_snake()
 	spawn_food()
 	score = 0
-	update_score()
+	update_labels()
 
 func spawn_snake():
 	var snake_head = Sprite2D.new()
 	snake_head.texture = load("res://icon.svg")
 	snake_head.modulate = Color(1, 0, 0) # Red color for snake head
-	var snake_position = Vector2(randi_range(0, grid_size.x - 1), randi_range(0, grid_size.y - 1)) * tile_size
-	snake_head.position = snake_position#
+	var snake_position = Vector2(grid_size.x / 2, grid_size.y / 2) * tile_size
+	#Vector2(randi_range(0, grid_size.x - 1), randi_range(0, grid_size.y - 1)) * tile_size
+	snake_head.position = snake_position
 	snake_head.scale = Vector2(0.15, 0.15)
 	add_child(snake_head)
 	snake.append(snake_head)
@@ -126,7 +128,7 @@ func _on_game_timeout():
 	var action = qnet.predict(get_state(), previous_reward)
 	previous_reward = get_reward()
 	move_snake(action)
-	update_score()
+	update_labels()
 
 func get_state():
 	var state = []
@@ -141,7 +143,7 @@ func get_state():
 	for i in range(3):
 		if i < snake_body.size():
 			state.append(snake_body[i].position.x / (grid_size.x * tile_size - 1))
-			state.append(snake_body[i].position.y / (grid_size.x * tile_size - 1))
+			state.append(snake_body[i].position.y / (grid_size.y * tile_size - 1))
 		else:
 			state.append(-1)  # Placeholder for x-coordinate
 			state.append(-1)  # Placeholder for y-coordinate
@@ -163,15 +165,14 @@ func get_reward():
 		reward += 25  # Increase reward for eating food
 	
 	# Penalty for hitting the wall
-	elif snake[0].position.x < 0 or snake[0].position.x >= grid_size.x * tile_size or snake[0].position.y < 0 or snake[0].position.y >= grid_size.y * tile_size:
+	if snake[0].position.x < 0 or snake[0].position.x >= grid_size.x * tile_size or snake[0].position.y < 0 or snake[0].position.y >= grid_size.y * tile_size:
 		reward -= 50  # Increase penalty for hitting the wall
 	
 	# Reward/Penalty for moving towards/away from food
-	else:
-		if new_manhattan_distance < manhattan_distance:
-			reward += 5  # Increase reward for moving closer to food
-		elif new_manhattan_distance > manhattan_distance:
-			reward -= 1  # Mild penalty for moving away from food
+	if new_manhattan_distance < manhattan_distance:
+		reward += 5  # Increase reward for moving closer to food
+	elif new_manhattan_distance > manhattan_distance:
+		reward -= 1  # Mild penalty for moving away from food
 	# Check for self-collision
 	for body_part in snake_body:
 		if snake[0].position == body_part.position:
@@ -228,6 +229,7 @@ func move_snake(direction):
 func is_position_valid(position: Vector2) -> bool:
 	return position.x >= 0 and position.x < grid_size.x * tile_size and position.y >= 0 and position.y < grid_size.y * tile_size
 
-func update_score():
+func update_labels():
+	expl_label.text = "Exploration Probability: " + str(qnet.exploration_probability)
 	score_label.text = "Score: " + str(score)
 

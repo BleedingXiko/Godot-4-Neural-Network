@@ -22,5 +22,11 @@ offset_bottom = 46.0
 position = Vector2(161, 117)
 zoom = Vector2(2, 2)
 
+[node name="Label2" type="Label" parent="."]
+offset_left = 159.0
+offset_top = 215.0
+offset_right = 199.0
+offset_bottom = 238.0
+
 [connection signal="timeout" from="Timer" to="." method="_on_food_timer_timeout"]
 [connection signal="timeout" from="Timer2" to="." method="_on_game_timeout"]
