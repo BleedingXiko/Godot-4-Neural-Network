@@ -4,6 +4,7 @@ func _on_won_body_entered(body: Node):
 #	print(body)
 	if body.is_in_group("ai"):
 		body.time_alive -= body.time_alive / 2
+		body.queue_free()
 		print("AI Won")
 
 

@@ -23,12 +23,12 @@ var q_network_config = {
 	"exploration_decreasing_decay": 0.01,
 	"min_exploration_probability": 0.05,
 	"discounted_factor": 0.95,
-	"decay_per_steps": 200,
+	"decay_per_steps": 350,
 	"use_replay": true,
 	"is_learning": true,
 	"use_target_network": true,
-	"update_target_every_steps": 2000,
-	"memory_capacity": 760,
+	"update_target_every_steps": 1500,
+	"memory_capacity": 500,
 	"batch_size": 128, 
 	#used by the neural network
 	"learning_rate": 0.000001, 
@@ -40,17 +40,19 @@ func _ready():
 	qnet = QNetwork.new(q_network_config) #config is used by both qnet and neural network advanced
 	qnet.add_layer(12) #input nodes
 	qnet.add_layer(16, ACTIVATIONS.SWISH) #hidden layer
+	qnet.add_layer(8, ACTIVATIONS.TANH) #hidden layer
 	qnet.add_layer(4, ACTIVATIONS.SIGMOID) # 4 actions
 	create_grid()
 	reset_game()
 	setup_timer()
 	update_manhattan_distance()
+	#RenderingServer.render_loop_enabled = false
 
 func _input(event):
 	if event.is_action_pressed("ui_up"):
 		qnet.save("./qnetwork.data")
 	if event.is_action_pressed("ui_down"):
-		qnet.load("./qnetwork.data", true)
+		qnet.load("./qnetwork.data", true, 0.98)
 
 func update_manhattan_distance():
 	var distance_x = abs(snake[0].position.x - food.position.x)
@@ -125,6 +127,7 @@ func spawn_food():
 	add_child(food)
 
 func _on_game_timeout():
+	#print(get_reward())
 	var action = qnet.predict(get_state(), previous_reward)
 	previous_reward = get_reward()
 	move_snake(action)
@@ -133,11 +136,11 @@ func _on_game_timeout():
 func get_state():
 	var state = []
 	state.append(snake[0].position.x / (grid_size.x * tile_size - 1))
-	state.append(snake[0].position.y / (grid_size.x * tile_size - 1))
+	state.append(snake[0].position.y / (grid_size.y * tile_size - 1))
 	state.append(food.position.x / (grid_size.x * tile_size - 1))
-	state.append(food.position.y / (grid_size.x * tile_size - 1))
-	state.append(snake_direction.x / (grid_size.x * tile_size - 1))
-	state.append(snake_direction.y / (grid_size.x * tile_size - 1))
+	state.append(food.position.y / (grid_size.y * tile_size - 1))
+	state.append(snake_direction.x)
+	state.append(snake_direction.y)
 
 	# Include positions of the three closest body parts
 	for i in range(3):
@@ -162,26 +165,26 @@ func get_reward():
 		grow_snake()
 		food.queue_free()
 		spawn_food()
-		reward += 25  # Increase reward for eating food
+		reward += 5  # Increase reward for eating food
 	
 	# Penalty for hitting the wall
 	if snake[0].position.x < 0 or snake[0].position.x >= grid_size.x * tile_size or snake[0].position.y < 0 or snake[0].position.y >= grid_size.y * tile_size:
-		reward -= 50  # Increase penalty for hitting the wall
+		reward -= 10  # Increase penalty for hitting the wall
 	
 	# Reward/Penalty for moving towards/away from food
 	if new_manhattan_distance < manhattan_distance:
-		reward += 5  # Increase reward for moving closer to food
+		reward += 2  # Increase reward for moving closer to food
 	elif new_manhattan_distance > manhattan_distance:
 		reward -= 1  # Mild penalty for moving away from food
 	# Check for self-collision
 	for body_part in snake_body:
 		if snake[0].position == body_part.position:
-			reward -= 100  # Large penalty for self-collision
+			reward -= 15  # Large penalty for self-collision
 			reset_game()
 			break
 		
 	manhattan_distance = new_manhattan_distance
-	return reward + (snake_body.size() * 2)
+	return reward
 
 
 func grow_snake():
