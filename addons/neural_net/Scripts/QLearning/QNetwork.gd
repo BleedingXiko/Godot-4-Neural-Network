@@ -70,8 +70,7 @@ func add_to_memory(state, action, reward, next_state, done):
 func sample_memory():
 	var batch = []
 	for i in range(min(batch_size, replay_memory.size())):
-		var random_index = randi() % replay_memory.size()
-		batch.append(replay_memory[random_index])
+		batch.append(replay_memory.pick_random())
 	return batch
 
 func update_target_network():

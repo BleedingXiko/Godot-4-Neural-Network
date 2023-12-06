@@ -1,0 +1,11 @@
+[gd_scene load_steps=3 format=3 uid="uid://vcqn86584nr8"]
+
+[ext_resource type="Script" path="res://Demo/NNA/cell.gd" id="1"]
+[ext_resource type="Texture2D" uid="uid://yebdjybcg7n8" path="res://Demo/NNA/icon.png" id="2"]
+
+[node name="cell" type="TouchScreenButton"]
+scale = Vector2(0.5, 0.5)
+texture_normal = ExtResource("2")
+script = ExtResource("1")
+
+[connection signal="pressed" from="." to="." method="_on_cell_pressed"]
