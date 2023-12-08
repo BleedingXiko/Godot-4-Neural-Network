@@ -32,11 +32,24 @@ func _init(_input_nodes: int, _hidden_nodes: int, _output_nodes: int, is_set: bo
 		hidden_nodes = _hidden_nodes;
 		output_nodes = _output_nodes;
 		
-		weights_input_hidden = Matrix.rand(Matrix.new(hidden_nodes, input_nodes))
-		weights_hidden_output = Matrix.rand(Matrix.new(output_nodes, hidden_nodes))
+		var ih: Matrix = Matrix.new()
+		var bh: Matrix =  Matrix.new()
+		var ho: Matrix = Matrix.new()
+		var bo: Matrix = Matrix.new()
 		
-		bias_hidden = Matrix.rand(Matrix.new(hidden_nodes, 1))
-		bias_output = Matrix.rand(Matrix.new(output_nodes, 1))
+		ih.init(hidden_nodes, input_nodes)
+		bh.init(hidden_nodes, 1)
+		ho.init(output_nodes, hidden_nodes)
+		bo.init(output_nodes, 1)
+		ih.rand()
+		ho.rand()
+		bh.rand()
+		bo.rand()
+		weights_input_hidden = ih
+		weights_hidden_output = ho
+		
+		bias_hidden = bh
+		bias_output = bo
 	
 	set_activation_function()
 	set_nn_color()

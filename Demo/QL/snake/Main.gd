@@ -23,15 +23,15 @@ var q_network_config = {
 	"exploration_decreasing_decay": 0.01,
 	"min_exploration_probability": 0.05,
 	"discounted_factor": 0.95,
-	"decay_per_steps": 350,
+	"decay_per_steps": 250,
 	"use_replay": true,
 	"is_learning": true,
 	"use_target_network": true,
 	"update_target_every_steps": 1500,
-	"memory_capacity": 500,
-	"batch_size": 128, 
+	"memory_capacity": 800,
+	"batch_size": 256, 
 	#used by the neural network
-	"learning_rate": 0.000001, 
+	"learning_rate": 0.0000001, 
 	"l2_regularization_strength": 0.001,
 	"use_l2_regularization": false,
 }
@@ -42,6 +42,7 @@ func _ready():
 	qnet.add_layer(16, ACTIVATIONS.SWISH) #hidden layer
 	qnet.add_layer(8, ACTIVATIONS.TANH) #hidden layer
 	qnet.add_layer(4, ACTIVATIONS.SIGMOID) # 4 actions
+	qnet.load("./qnetwork.data", true, 0.91)
 	create_grid()
 	reset_game()
 	setup_timer()
@@ -52,7 +53,7 @@ func _input(event):
 	if event.is_action_pressed("ui_up"):
 		qnet.save("./qnetwork.data")
 	if event.is_action_pressed("ui_down"):
-		qnet.load("./qnetwork.data", true, 0.98)
+		qnet.load("./qnetwork.data", true, 0.92)
 
 func update_manhattan_distance():
 	var distance_x = abs(snake[0].position.x - food.position.x)
@@ -93,7 +94,7 @@ func spawn_snake():
 	var snake_head = Sprite2D.new()
 	snake_head.texture = load("res://icon.svg")
 	snake_head.modulate = Color(1, 0, 0) # Red color for snake head
-	var snake_position = Vector2(grid_size.x / 2, grid_size.y / 2) * tile_size
+	var snake_position = Vector2(grid_size.x - 1, grid_size.y - 1) * tile_size
 	#Vector2(randi_range(0, grid_size.x - 1), randi_range(0, grid_size.y - 1)) * tile_size
 	snake_head.position = snake_position
 	snake_head.scale = Vector2(0.15, 0.15)
@@ -122,6 +123,11 @@ func spawn_food():
 	food.texture = load("res://icon.svg")
 	food.modulate = Color(0, 1, 0) # Green color for food
 	var food_position = Vector2(randi_range(0, grid_size.x - 1), randi_range(0, grid_size.y - 1)) * tile_size
+	var bad_spots: Array[Vector2] = []
+	for i:Sprite2D in snake_body:
+		bad_spots.append(i.position)
+	for x:Sprite2D in snake:
+		bad_spots.append(x.position)
 	food.position = food_position
 	food.scale = Vector2(0.15, 0.15)
 	add_child(food)
@@ -161,25 +167,25 @@ func get_reward():
 	
 	# Reward for eating food
 	if snake[0].position == food.position:
-		score += 1
+		score += 0.25
 		grow_snake()
 		food.queue_free()
 		spawn_food()
-		reward += 5  # Increase reward for eating food
+		reward += 1 # Increase reward for eating food
 	
 	# Penalty for hitting the wall
 	if snake[0].position.x < 0 or snake[0].position.x >= grid_size.x * tile_size or snake[0].position.y < 0 or snake[0].position.y >= grid_size.y * tile_size:
-		reward -= 10  # Increase penalty for hitting the wall
+		reward -= 2  # Increase penalty for hitting the wall
 	
 	# Reward/Penalty for moving towards/away from food
 	if new_manhattan_distance < manhattan_distance:
-		reward += 2  # Increase reward for moving closer to food
+		reward += 0.50  # Increase reward for moving closer to food
 	elif new_manhattan_distance > manhattan_distance:
-		reward -= 1  # Mild penalty for moving away from food
+		reward -= 0.35  # Mild penalty for moving away from food
 	# Check for self-collision
 	for body_part in snake_body:
 		if snake[0].position == body_part.position:
-			reward -= 15  # Large penalty for self-collision
+			reward -= 2  # Large penalty for self-collision
 			reset_game()
 			break
 		
@@ -234,5 +240,5 @@ func is_position_valid(position: Vector2) -> bool:
 
 func update_labels():
 	expl_label.text = "Exploration Probability: " + str(qnet.exploration_probability)
-	score_label.text = "Score: " + str(score)
+	score_label.text = "Current Reward: " + str(get_reward())
 

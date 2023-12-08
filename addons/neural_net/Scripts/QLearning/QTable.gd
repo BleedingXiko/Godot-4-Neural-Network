@@ -40,24 +40,23 @@ func _init(n_observations: int, n_action_spaces: int, config: Dictionary) -> voi
 	print_debug_info = config.get("print_debug_info", print_debug_info)
 	random_weights = config.get("random_weights", random_weights)
 	
-	if random_weights:
-		Table = Matrix.rand(Matrix.new(observation_space, action_spaces))
-	else:
-		Table = Matrix.new(observation_space, action_spaces)
+	var Mat: Matrix = Matrix.new()
+	Mat.init(observation_space, action_spaces)
 	
-	#QTable = Matrix.rand(Matrix.new(observation_space, action_spaces))
-	# Optionally initialize QTable with random values
+	if random_weights:
+		Mat.rand()
+	Table = Mat
 
 func predict(current_states: Array, reward_of_previous_state: float) -> int:
 	# Create a composite state from current states
-	var chosen_state = create_composite_state(current_states)
+	var chosen_state: int = create_composite_state(current_states)
 
 	# Update Q-Table for the previous state-action pair
 	if is_learning and previous_state != -100:
-		var old_value = Table.data[previous_state][previous_action]
-		var max_future_q = Table.max_from_row(chosen_state)
-		var new_value = (1 - learning_rate) * old_value + learning_rate * (reward_of_previous_state + discounted_factor * max_future_q)
-		Table.data[previous_state][previous_action] = new_value
+		var old_value: float = Table.get_at(previous_state, previous_action)
+		var max_future_q: float = Table.max_from_row(chosen_state)
+		var new_value: float = (1 - learning_rate) * old_value + learning_rate * (reward_of_previous_state + discounted_factor * max_future_q)
+		Table.set_at(previous_state, previous_action, new_value)
 
 	# Action selection based on exploration-exploitation trade-off
 	var action_to_take: int
@@ -75,15 +74,15 @@ func predict(current_states: Array, reward_of_previous_state: float) -> int:
 			if print_debug_info:
 				print("Total steps completed:", steps_completed)
 				print("Current exploration probability:", exploration_probability)
-				print("Q-Table data:", Table.data)
+				print("Q-Table data:", Table.get_data())
 				print("-----------------------------------------------------------------------------------------")
 
 	steps_completed += 1
 	return action_to_take
 
 func create_composite_state(current_states: Array) -> int:
-	var composite_state = 0
-	var multiplier = 1
+	var composite_state: int = 0
+	var multiplier: int = 1
 	for state in current_states:
 		composite_state += state * multiplier
 		multiplier *= max_state_value # Define max_state_value based on your state ranges
@@ -92,14 +91,14 @@ func create_composite_state(current_states: Array) -> int:
 
 
 func save(path):
-	var file = FileAccess.open(path, FileAccess.WRITE)
-	var data = Table.save()
+	var file: FileAccess = FileAccess.open(path, FileAccess.WRITE)
+	var data: Array = Table.save()
 	file.store_var(data)
 	file.close()
 
 func load(path):
-	var file = FileAccess.open(path, FileAccess.READ)
-	var data = file.get_var()
+	var file: FileAccess = FileAccess.open(path, FileAccess.READ)
+	var data: Array = file.get_var()
 	Table = Matrix.load(data)
 	is_learning = false
 	exploration_probability = min_exploration_probability

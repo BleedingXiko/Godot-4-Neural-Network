@@ -36,7 +36,7 @@ func _process(_delta: float) -> void:
 	elif Input.is_action_just_pressed("ui_down"):
 		$Timer.wait_time = 0.001
 	elif Input.is_action_just_pressed("ui_up"):
-		qt.load('./qnet.data')
+		qt.save('./qnet.data')
 
 func _on_timer_timeout():
 	if done:
