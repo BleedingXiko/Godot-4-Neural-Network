@@ -2,7 +2,8 @@ class_name NeuralNetworkAdvanced
 
 var network: Array
 
-var ACTIVATIONS = Activation.new().functions
+var af = Activation.new()
+var ACTIVATIONS = af.get_functions()
 
 
 var learning_rate: float = 0.1
@@ -26,9 +27,9 @@ func add_layer(nodes: int, activation: Dictionary = ACTIVATIONS.SIGMOID):
 		var bias: Matrix =  Matrix.new()
 		
 		weights.init(nodes, layer_structure[-1])
+		bias.init(nodes, 1)
 		weights.rand()
 		bias.rand()
-		bias.init(nodes, 1)
 		var layer_data: Dictionary = {
 			"weights": weights,
 			"bias": bias,

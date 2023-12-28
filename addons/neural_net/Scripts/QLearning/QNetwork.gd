@@ -113,7 +113,7 @@ func predict(current_states: Array, reward_of_previous_state: float) -> int:
 				var target_q_values: Array = neural_network.predict(previous_state)
 				target_q_values[previous_action] = target_q_value
 				neural_network.train(previous_state, target_q_values)
-
+				
 	var action_to_take: int
 	if randf() < exploration_probability:
 		action_to_take = randi() % current_q_values.size()

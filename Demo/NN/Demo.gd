@@ -1,7 +1,7 @@
 extends Node2D
 
 func _ready():
-	var maps = ["res://Demo/NN/track.tscn", "res://Demo/NN/track_2.tscn"]
+	var maps = ["res://Demo/NN/track.tscn"]
 	var picked = maps.pick_random()
 	var scene = load(picked)
 	var child = scene.instantiate()

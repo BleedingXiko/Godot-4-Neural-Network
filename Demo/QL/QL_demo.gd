@@ -15,9 +15,12 @@ var total_iteration_rewards: Array[float] = []
 var current_iteration_rewards: float = 0.0
 var done: bool = false
 
+
 var q_table_config = {
 	"print_debug_info": true,
 	"exploration_decreasing_decay": 0.01,
+	"exploration_strategy": "ucb", #epsilon_greedy softmax thompson_sampling ucb 
+	"exploration_parameter": 2,
 	"min_exploration_probability": 0.02,
 	"discounted_factor": 0.9,
 	"learning_rate": 0.1,
@@ -27,23 +30,20 @@ var q_table_config = {
 }
 
 func _ready() -> void:
-	qt = QTable.new(36 * 3, 4, q_table_config)
-
+	qt = QTable.new()
+	qt.init(36 * 3, 4, q_table_config)
 
 func _process(_delta: float) -> void:
 	if Input.is_action_just_pressed("predict"):
 		$Timer.wait_time = 0.5
 	elif Input.is_action_just_pressed("ui_down"):
 		$Timer.wait_time = 0.001
-	elif Input.is_action_just_pressed("ui_up"):
-		qt.save('./qnet.data')
 
 func _on_timer_timeout():
-	if done:
-		reset()
-		return
 	current_state = [row * 6 + column, target]
 	var action_to_do: int = qt.predict(current_state, previous_reward)
+	if done:
+		reset()
 	
 	current_iteration_rewards += previous_reward
 	previous_reward = 0.0
@@ -61,7 +61,7 @@ func _on_timer_timeout():
 	else:
 		previous_reward -= 0.05
 	$player.position = Vector2(96 * column + 16, 512 - (96 * row + 16))
-	$lr.text = str(qt.exploration_probability)
+	$lr.text = str(qt.get_exploration_probability())
 	$target.text = str(target)
 
 
@@ -93,3 +93,9 @@ func reset():
 	current_iteration_rewards = 0.0
 	$player.position = Vector2(96 * column + 16, 512 - (96 * row + 16))
 
+func _on_save_pressed():
+	qt.save('res://qnet.data')
+
+
+func _on_load_pressed():
+	qt.load('res://qnet.data')

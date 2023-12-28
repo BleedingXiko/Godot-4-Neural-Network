@@ -1,6 +1,7 @@
 extends Node2D
 
 var qnet: QNetwork
+var qt: QTable
 var grid_size: Vector2 = Vector2(6, 6)
 var snake = []
 var snake_body = []  # Holds the snake body parts
@@ -17,6 +18,16 @@ var manhattan_distance = 0
 
 var ACTIVATIONS = Activation.new().functions
 
+var q_table_config = {
+	"print_debug_info": false,
+	"exploration_decreasing_decay": 0.01,
+	"min_exploration_probability": 0.02,
+	"discounted_factor": 0.9,
+	"learning_rate": 0.1,
+	"decay_per_steps": 100,
+	"max_state_value": 2,
+	"random_weights": false,
+}
 var q_network_config = {
 	"print_debug_info": true,
 	"exploration_probability": 1.0,
@@ -37,6 +48,8 @@ var q_network_config = {
 }
 
 func _ready():
+	qt = QTable.new(120000, 4, q_table_config)
+
 	qnet = QNetwork.new(q_network_config) #config is used by both qnet and neural network advanced
 	qnet.add_layer(12) #input nodes
 	qnet.add_layer(16, ACTIVATIONS.SWISH) #hidden layer
@@ -51,9 +64,9 @@ func _ready():
 
 func _input(event):
 	if event.is_action_pressed("ui_up"):
-		qnet.save("./qnetwork.data")
+		qt.save("./qnetwork.data")
 	if event.is_action_pressed("ui_down"):
-		qnet.load("./qnetwork.data", true, 0.92)
+		qt.load("./qnetwork.data")
 
 func update_manhattan_distance():
 	var distance_x = abs(snake[0].position.x - food.position.x)
@@ -134,7 +147,7 @@ func spawn_food():
 
 func _on_game_timeout():
 	#print(get_reward())
-	var action = qnet.predict(get_state(), previous_reward)
+	var action = qt.predict(get_state(), previous_reward)
 	previous_reward = get_reward()
 	move_snake(action)
 	update_labels()
@@ -145,8 +158,6 @@ func get_state():
 	state.append(snake[0].position.y / (grid_size.y * tile_size - 1))
 	state.append(food.position.x / (grid_size.x * tile_size - 1))
 	state.append(food.position.y / (grid_size.y * tile_size - 1))
-	state.append(snake_direction.x)
-	state.append(snake_direction.y)
 
 	# Include positions of the three closest body parts
 	for i in range(3):

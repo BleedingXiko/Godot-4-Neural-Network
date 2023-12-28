@@ -308,4 +308,20 @@ theme_override_font_sizes/font_size = 50
 wait_time = 0.001
 autostart = true
 
+[node name="save" type="Button" parent="."]
+offset_left = 796.0
+offset_top = 226.0
+offset_right = 840.0
+offset_bottom = 257.0
+text = "Save"
+
+[node name="load" type="Button" parent="."]
+offset_left = 796.0
+offset_top = 290.0
+offset_right = 842.0
+offset_bottom = 321.0
+text = "Load"
+
 [connection signal="timeout" from="Timer" to="." method="_on_timer_timeout"]
+[connection signal="pressed" from="save" to="." method="_on_save_pressed"]
+[connection signal="pressed" from="load" to="." method="_on_load_pressed"]

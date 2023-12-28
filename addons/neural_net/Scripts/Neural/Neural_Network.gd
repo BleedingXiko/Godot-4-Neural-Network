@@ -1,6 +1,7 @@
 class_name NeuralNetwork
 
-var ACTIVATIONS = Activation.new().functions
+var af = Activation.new()
+var ACTIVATIONS = af.get_functions()
 
 var best: bool = false
 var input_nodes: int

@@ -1,6 +1,7 @@
 extends Node2D
 
-var ACTIVATIONS = Activation.new().functions
+var af = Activation.new()
+var ACTIVATIONS = af.get_functions()
 
 
 @export var AI_Scene: PackedScene
@@ -163,8 +164,8 @@ func reload_generation():
 	best_10_nn.sort_custom(Callable(self, "custom_sort"))
 	if use_reproduction: best_10_nn = best_10_nn.slice(best_10_nn.size() - top_value_cutoff, -1)
 	
-	if save_best and !best_10_nn.is_empty():
-		best_10_nn[-1].save(save_path)
+	if save_best:
+		best_nn.save(save_path)
 	freeing = true
 	timer.stop()
 	
