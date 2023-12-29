@@ -6,6 +6,8 @@ compatibility_minimum = "4.2"
 [libraries]
 
 macos.debug = "res://bin/neural.macos.template_debug.framework"
+web.debug = "res://bin/neural.web.template_debug.wasm32.wasm"
+web.debug = "res://bin/neural.web.template_release.wasm32.wasm"
 macos.release = "res://bin/neural.macos.template_release.framework"
 windows.debug.x86_32 = "res://bin/neural.windows.template_debug.x86_32.dll"
 windows.release.x86_32 = "res://bin/neural.windows.template_release.x86_32.dll"
