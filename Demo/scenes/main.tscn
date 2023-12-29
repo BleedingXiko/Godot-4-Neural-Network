@@ -1,0 +1,57 @@
+[gd_scene load_steps=8 format=3 uid="uid://blj5g47uwo7m0"]
+
+[ext_resource type="Script" path="res://Demo/scenes/main.gd" id="1_5g6v2"]
+[ext_resource type="Texture2D" uid="uid://c4h3gwlm5pvhe" path="res://icon.svg" id="1_s2jh7"]
+[ext_resource type="PackedScene" uid="uid://cr3pl7yfk32tb" path="res://Demo/scenes/pipe.tscn" id="2_h58j0"]
+[ext_resource type="PackedScene" uid="uid://d2ort7tfi33lg" path="res://Demo/scenes/ground.tscn" id="4_kx1e6"]
+[ext_resource type="Script" path="res://addons/neural_net/Scripts/Neural/Neural_Net.gd" id="6_ceydd"]
+[ext_resource type="PackedScene" uid="uid://snrvq7jkapgf" path="res://Demo/scenes/game_over.tscn" id="6_yk7bg"]
+[ext_resource type="PackedScene" uid="uid://b6xt1pam4caki" path="res://Demo/scenes/bird.tscn" id="7_rjumk"]
+
+[node name="Main" type="Node2D"]
+script = ExtResource("1_5g6v2")
+pipe_scene = ExtResource("2_h58j0")
+
+[node name="Background" type="Sprite2D" parent="."]
+visible = false
+texture = ExtResource("1_s2jh7")
+offset = Vector2(432, 384)
+
+[node name="Ground" parent="." instance=ExtResource("4_kx1e6")]
+z_index = 1
+
+[node name="PipeTimer" type="Timer" parent="."]
+wait_time = 1.5
+
+[node name="ScoreLabel" type="Label" parent="."]
+z_index = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -85.0
+offset_right = 85.0
+offset_bottom = 58.0
+grow_horizontal = 2
+theme_override_font_sizes/font_size = 40
+text = "SCORE: 0"
+
+[node name="GameOver" parent="." instance=ExtResource("6_yk7bg")]
+
+[node name="Neural_Net" type="Node2D" parent="."]
+position = Vector2(203, 365)
+script = ExtResource("6_ceydd")
+AI_Scene = ExtResource("7_rjumk")
+Batch_Size = 18
+Generation_Delay = 4
+save_best = false
+input_nodes = 3
+hidden_nodes = 6
+output_nodes = 2
+reproduced_population = 12
+
+[node name="Camera2D" type="Camera2D" parent="."]
+position = Vector2(545, 331)
+
+[connection signal="hit" from="Ground" to="." method="_on_ground_hit"]
+[connection signal="timeout" from="PipeTimer" to="." method="_on_pipe_timer_timeout"]
+[connection signal="restart" from="GameOver" to="." method="_on_game_over_restart"]

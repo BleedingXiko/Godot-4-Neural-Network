@@ -19,7 +19,7 @@ var done: bool = false
 var q_table_config = {
 	"print_debug_info": true,
 	"exploration_decreasing_decay": 0.01,
-	"exploration_strategy": "ucb", #epsilon_greedy softmax thompson_sampling ucb 
+	"exploration_strategy": "thompson_sampling", #epsilon_greedy softmax thompson_sampling ucb 
 	"exploration_parameter": 2,
 	"min_exploration_probability": 0.02,
 	"discounted_factor": 0.9,
@@ -94,8 +94,8 @@ func reset():
 	$player.position = Vector2(96 * column + 16, 512 - (96 * row + 16))
 
 func _on_save_pressed():
-	qt.save('res://qnet.data')
+	qt.save('user://qnet.data')
 
 
 func _on_load_pressed():
-	qt.load('res://qnet.data')
+	qt.load('user://qnet.data')

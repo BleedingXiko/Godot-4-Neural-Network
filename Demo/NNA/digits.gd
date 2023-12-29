@@ -93,7 +93,7 @@ var training_data = [{
 }]
 
 var network_config = {
-	"learning_rate": 0.01,
+	"learning_rate": 0.00000001,
 	"l2_regularization_strength": 0.001,
 	"use_l2_regularization": false,
 }
@@ -102,11 +102,12 @@ func _ready():
 	nn = NeuralNetworkAdvanced.new(network_config)
 	
 	nn.add_layer(25)
-	nn.add_layer(16, nn.ACTIVATIONS.TANH)
+	nn.add_layer(26, nn.ACTIVATIONS.RELU)
+	nn.add_layer(16, nn.ACTIVATIONS.RELU)
 	nn.add_layer(10, nn.ACTIVATIONS.SIGMOID)
 	
-	nn.load("./nn.data")
-	#test()
+	#nn.load("./nn.data")
+	test()
 #	for n in get_children():
 #		data.append(n.data)
 #	print(data)
