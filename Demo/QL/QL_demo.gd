@@ -17,13 +17,14 @@ var done: bool = false
 
 
 var q_table_config = {
-	"print_debug_info": true,
+	"print_debug_info": false,
+	"is_learning": false,
 	"exploration_decreasing_decay": 0.01,
 	"exploration_strategy": "softmax", #epsilon_greedy softmax thompson_sampling ucb 
 	"exploration_parameter": 0.3,
 	"min_exploration_probability": 0.02,
 	"discounted_factor": 0.9,
-	"learning_rate": 0.1,
+	"learning_rate": 0.05,
 	"decay_per_steps": 100,
 	"max_state_value": 2,
 	"random_weights": false,
@@ -98,4 +99,4 @@ func _on_save_pressed():
 
 
 func _on_load_pressed():
-	qt.load('user://qnet.data')
+	qt.load('user://qnet.data', q_table_config)
