@@ -17,13 +17,14 @@ var done: bool = false
 
 
 var q_table_config = {
-	"print_debug_info": false,
+	"print_debug_info": true,
 	"is_learning": false,
+	"action_threshold": 0.15, #default 0.07
 	"exploration_decreasing_decay": 0.01,
 	"exploration_strategy": "softmax", #epsilon_greedy softmax thompson_sampling ucb 
 	"exploration_parameter": 0.3,
 	"min_exploration_probability": 0.02,
-	"discounted_factor": 0.9,
+	"discounted_factor": 0.95,
 	"learning_rate": 0.05,
 	"decay_per_steps": 100,
 	"max_state_value": 2,
@@ -92,7 +93,7 @@ func reset():
 	done = false
 	total_iteration_rewards.append(current_iteration_rewards)
 	current_iteration_rewards = 0.0
-	$player.position = Vector2(96 * column + 16, 512 - (96 * row + 16))
+	$player.position = Vector2(96 * row + 16, 512 - (96 * column + 16))
 
 func _on_save_pressed():
 	qt.save('user://qnet.data')

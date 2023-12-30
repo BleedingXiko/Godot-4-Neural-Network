@@ -20,7 +20,7 @@ var af = Activation.new()
 var ACTIVATIONS = af.get_functions()
 
 var q_network_config = {
-	"print_debug_info": false,
+	"print_debug_info": true,
 	"exploration_probability": 1.0,
 	"exploration_decreasing_decay": 0.01,
 	"min_exploration_probability": 0.05,
