@@ -41,6 +41,15 @@ func _process(_delta: float) -> void:
 	elif Input.is_action_just_pressed("ui_down"):
 		$Timer.wait_time = 0.001
 
+func hash_state(state_array: Array, hash_range: int) -> int:
+	var hash_value := 0
+	var prime := 31
+
+	for state in state_array:
+		hash_value = (hash_value * prime + state) % hash_range
+
+	return hash_value
+
 func _on_timer_timeout():
 	current_state = [row * 6 + column, target]
 	var action_to_do: int = qt.predict(current_state, previous_reward)
