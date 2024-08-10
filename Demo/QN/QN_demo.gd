@@ -1,6 +1,9 @@
 extends Node2D
 
-var qt: QTable
+var qnet: QNetwork
+var af = Activation.new()
+var ACTIVATIONS = af.get_functions()
+
 var row: int = 0
 var column: int = 0
 
@@ -16,24 +19,30 @@ var current_iteration_rewards: float = 0.0
 var done: bool = false
 
 
-var q_table_config = {
+var q_network_config = {
 	"print_debug_info": true,
-	"is_learning": true,
-	"action_threshold": 0.15, #default 0.07
+	"exploration_probability": 1.0,
 	"exploration_decreasing_decay": 0.01,
-	"exploration_strategy": "softmax", #epsilon_greedy softmax thompson_sampling ucb 
-	"exploration_parameter": 0.3,
-	"min_exploration_probability": 0.02,
-	"discounted_factor": 0.95,
-	"learning_rate": 0.05,
-	"decay_per_steps": 100,
-	"max_state_value": 2,
-	"random_weights": false,
+	"min_exploration_probability": 0.05,
+	"discounted_factor": 0.85,
+	"decay_per_steps": 250,
+	"use_replay": true,
+	"is_learning": true,
+	"use_target_network": true,
+	"update_target_every_steps": 3000,
+	"memory_capacity": 512,
+	"batch_size": 128,
+	#used by the neural network
+	"learning_rate": 0.0001, 
+	"l2_regularization_strength": 0.001,
+	"use_l2_regularization": false,
 }
 
 func _ready() -> void:
-	qt = QTable.new()
-	qt.init(36 * 3, 4, q_table_config)
+	qnet = QNetwork.new(q_network_config) #config is used by both qnet and neural network advanced
+	qnet.add_layer(2) #input nodes
+	qnet.add_layer(4, ACTIVATIONS.TANH) #hidden layer
+	qnet.add_layer(4, ACTIVATIONS.SIGMOID) # 4 actions
 
 func _process(_delta: float) -> void:
 	if Input.is_action_just_pressed("predict"):
@@ -52,7 +61,7 @@ func hash_state(state_array: Array, hash_range: int) -> int:
 
 func _on_timer_timeout():
 	current_state = [row * 6 + column, target]
-	var action_to_do: int = qt.predict(current_state, previous_reward)
+	var action_to_do: int = qnet.predict(current_state, previous_reward)
 	if done:
 		reset()
 	
@@ -72,7 +81,7 @@ func _on_timer_timeout():
 	else:
 		previous_reward -= 0.05
 	$player.position = Vector2(96 * column + 16, 512 - (96 * row + 16))
-	$lr.text = str(qt.get_exploration_probability())
+	$lr.text = str(qnet.exploration_probability)
 	$target.text = str(target)
 
 
@@ -105,8 +114,8 @@ func reset():
 	$player.position = Vector2(96 * row + 16, 512 - (96 * column + 16))
 
 func _on_save_pressed():
-	qt.save('user://qt.data')
+	qnet.save('user://qnet.data')
 
 
 func _on_load_pressed():
-	qt.load('user://qt.data', q_table_config)
+	qnet.load('user://qnet.data', false, 0.05)

@@ -139,7 +139,7 @@ func predict(current_states: Array, reward_of_previous_state: float, done: bool 
 func save(path):
 	neural_network.save(path)
 
-func load(path, continue_learning: bool = false, exploration_prob: float = 1.0):
+func load(path, continue_learning: bool = false, exploration_prob: float = 0.2):
 	neural_network.load(path)
 	exploration_probability = exploration_prob
 	update_target_network()
