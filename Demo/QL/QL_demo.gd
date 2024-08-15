@@ -17,7 +17,7 @@ var done: bool = false
 
 
 var q_table_config = {
-	"print_debug_info": true,
+	"print_debug_info": false,
 	"is_learning": true,
 	"action_threshold": 0.15, #default 0.07
 	"exploration_decreasing_decay": 0.01,

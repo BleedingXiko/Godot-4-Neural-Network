@@ -14,7 +14,15 @@ offset_bottom = 96.0
 color = Color(0, 0, 0, 1)
 metadata/_edit_use_anchors_ = true
 
-[node name="normal2" type="ColorRect" parent="bck"]
+[node name="00" type="ColorRect" parent="bck"]
+offset_top = 96.0
+offset_right = 96.0
+offset_bottom = 192.0
+color = Color(0, 0, 0, 1)
+metadata/_edit_use_anchors_ = true
+
+[node name="six" type="ColorRect" parent="bck"]
+visible = false
 offset_top = 96.0
 offset_right = 96.0
 offset_bottom = 192.0
@@ -42,7 +50,21 @@ offset_bottom = 480.0
 color = Color(0, 0, 0, 1)
 metadata/_edit_use_anchors_ = true
 
+[node name="normal30" type="ColorRect" parent="bck"]
+offset_top = 384.0
+offset_right = 96.0
+offset_bottom = 480.0
+color = Color(0, 0, 0, 1)
+metadata/_edit_use_anchors_ = true
+
 [node name="normal6" type="ColorRect" parent="bck"]
+offset_top = 480.0
+offset_right = 96.0
+offset_bottom = 576.0
+color = Color(0, 0, 0, 1)
+metadata/_edit_use_anchors_ = true
+
+[node name="normal31" type="ColorRect" parent="bck"]
 offset_top = 480.0
 offset_right = 96.0
 offset_bottom = 576.0
@@ -229,7 +251,15 @@ offset_bottom = 480.0
 color = Color(0, 0, 0, 1)
 metadata/_edit_use_anchors_ = true
 
-[node name="normal30" type="ColorRect" parent="bck"]
+[node name="0000" type="ColorRect" parent="bck"]
+offset_left = 384.0
+offset_top = 480.0
+offset_right = 480.0
+offset_bottom = 576.0
+color = Color(0, 0, 0, 1)
+metadata/_edit_use_anchors_ = true
+
+[node name="tf" type="ColorRect" parent="bck"]
 offset_left = 384.0
 offset_top = 480.0
 offset_right = 480.0
@@ -237,7 +267,15 @@ offset_bottom = 576.0
 color = Color(0, 1, 0, 1)
 metadata/_edit_use_anchors_ = true
 
-[node name="normal31" type="ColorRect" parent="bck"]
+[node name="0" type="ColorRect" parent="bck"]
+offset_left = 480.0
+offset_right = 576.0
+offset_bottom = 96.0
+color = Color(0, 0, 0, 1)
+metadata/_edit_use_anchors_ = true
+
+[node name="five" type="ColorRect" parent="bck"]
+visible = false
 offset_left = 480.0
 offset_right = 576.0
 offset_bottom = 96.0
@@ -261,6 +299,14 @@ color = Color(0, 0, 0, 1)
 metadata/_edit_use_anchors_ = true
 
 [node name="normal34" type="ColorRect" parent="bck"]
+offset_left = 480.0
+offset_top = 288.0
+offset_right = 576.0
+offset_bottom = 384.0
+color = Color(0, 0, 0, 1)
+metadata/_edit_use_anchors_ = true
+
+[node name="normal37" type="ColorRect" parent="bck"]
 offset_left = 480.0
 offset_top = 288.0
 offset_right = 576.0

@@ -4,3 +4,5 @@
 
 [node name="tictactoe_qnet" type="Node2D"]
 script = ExtResource("1_uscjw")
+
+[node name="Timer" type="Timer" parent="."]

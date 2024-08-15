@@ -248,4 +248,3 @@ func is_position_valid(position: Vector2) -> bool:
 func update_labels():
 	expl_label.text = "Exploration Probability: " + str(qnet.exploration_probability)
 	score_label.text = "Current Reward: " + str(get_reward())
-

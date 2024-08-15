@@ -144,5 +144,3 @@ func load(path, continue_learning: bool = false, exploration_prob: float = 0.2):
 	exploration_probability = exploration_prob
 	update_target_network()
 	is_learning = continue_learning
-
-

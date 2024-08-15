@@ -1,4 +1,5 @@
 class_name NeuralNetwork
+extends RefCounted
 
 var af = Activation.new()
 var ACTIVATIONS = af.get_functions()

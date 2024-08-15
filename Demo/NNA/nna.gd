@@ -35,4 +35,3 @@ func _physics_process(delta: float) -> void:
 		print(nnas.predict([10.0, 11.0, 12.0]))
 		print(nnas.predict([13.0, 14.0, 15.0]))
 		print(nnas.predict([10.0, 11.0, 13.0]))
-

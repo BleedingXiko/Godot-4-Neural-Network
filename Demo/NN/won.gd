@@ -8,10 +8,10 @@ func _on_won_body_entered(body: Node):
 		print("AI Won")
 
 
+
 func _on_neural_net_gen_changed(_generation):
 	$"../gen".text = str(_generation)
 
 
 func _on_neural_net_true_batch_size(_size):
 	print("True Batch Size: ", _size)
-
