@@ -1,5 +1,4 @@
 class_name NeuralNetworkAdvanced
-extends RefCounted
 
 var network: Array
 

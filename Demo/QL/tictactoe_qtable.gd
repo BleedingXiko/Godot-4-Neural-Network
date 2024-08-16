@@ -162,12 +162,12 @@ func play_against_ai():
 			else:
 				print("AI made an invalid move, retrying...")
 				if randf() > 0.5:
-					if update_board(player, randi() % 9):
-						print_board()
-						if check_end_game():
-							await get_tree().create_timer(2.0).timeout
-							continue  # Start a new game
-						player = switch_player(player)
+						if update_board(player, randi() % 9):
+							print_board()
+							if check_end_game():
+								await get_tree().create_timer(2.0).timeout
+								continue  # Start a new game
+							player = switch_player(player)
 				# AI retries until a valid move is made
 
 func init_board():

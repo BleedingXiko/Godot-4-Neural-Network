@@ -21,8 +21,8 @@ var q_network_config = {
 	"is_learning": true,
 	"use_target_network": true,
 	"update_target_every_steps": 1500,
-	"memory_capacity": 800,
-	"batch_size": 256,
+	"memory_capacity": 256,
+	"batch_size": 64,
 	"learning_rate": 0.000001,
 	"l2_regularization_strength": 0.001,
 	"use_l2_regularization": false,
@@ -125,49 +125,44 @@ func _input(event: InputEvent) -> void:
 	if waiting_for_input and current_action != -1:
 		waiting_for_input = false
 		process_player_move(current_action)
+		$Timer.stop()
+		$Timer.emit_signal("timeout")
 
+func check_end_game() -> bool:
+	var winner = has_winner(board)
+	if winner != 0:
+		update_win_counts(winner)
+		init_board()  # Reset the board for a new game
+		return true
+	return false
 func play_against_ai():
+	init_board()
+	print_board()
+	player = 1  # You start first as X
+
 	while true:
-		init_board()
-		print_board()
-		var done = false
-		player = 1  # Reset player to X at the start of the game
-
-		while not done:
-			if player == 1:
-				waiting_for_input = true
-				input_timer.start()
-				await input_timer.timeout
-				if current_action != -1:
-					var action = current_action
-					current_action = -1
-					if update_board(player, action):
-						print_board()
-						var winner = determine_value(board)
-						if winner != 0:  # Game is over (either a win or a draw)
-							done = true
-							update_win_counts(winner)
-							await get_tree().create_timer(2.0).timeout
-							break
-						player = switch_player(player)
-					else:
-						print("Invalid move! Try again.")
-						waiting_for_input = true
-						continue
-				else:
-					continue
-			else:
-				print("AI's turn.")
-				player = await ai_move(player)
-				var winner = determine_value(board)
-				if winner != 0:  # Game is over (either a win or a draw)
-					done = true
-					update_win_counts(winner)
+		if player == 1:
+			waiting_for_input = true
+			input_timer.start()
+			await input_timer.timeout
+		else:
+			var action = qt_o.predict(board, 0)
+			if update_board(player, action):
+				print_board()
+				if check_end_game():
 					await get_tree().create_timer(2.0).timeout
-					break
+					continue  # Start a new game
 				player = switch_player(player)
+			else:
+				#print("AI made an invalid move, retrying...")
+					if update_board(player, randi() % 9):
+						print_board()
+						if check_end_game():
+							await get_tree().create_timer(2.0).timeout
+							continue  # Start a new game
+						player = switch_player(player)
+				# AI retries until a valid move is made
 
-		print("Starting a new game...")
 
 func ai_move(ai_player_turn: int) -> int:
 	var valid_move = false
@@ -176,8 +171,7 @@ func ai_move(ai_player_turn: int) -> int:
 		if update_board(ai_player_turn, action):
 			print_board()
 			valid_move = true
-		else:
-			print("AI made an invalid move, retrying.")
+			#print("AI made an invalid move, retrying.")
 	
 	return ai_player_turn  # Return the current player as AI’s move is complete
 
@@ -196,7 +190,7 @@ func process_player_move(action: int):
 		print_board()
 		player = switch_player(player)  # Switch to AI
 	else:
-		print("Invalid move. Try again.")
+		#print("Invalid move. Try again.")
 		waiting_for_input = true  # Continue waiting for a valid input
 
 func determine_value(_board: Array) -> int:
@@ -222,17 +216,26 @@ func switch_player(player: int) -> int:
 	return 2 if player == 1 else 1
 
 func has_winner(_board: Array) -> int:
-	var lines = [
-		[0, 1, 2], [3, 4, 5], [6, 7, 8],
-		[0, 3, 6], [1, 4, 7], [2, 5, 8],
-		[0, 4, 8], [2, 4, 6]
-	]
-	for line in lines:
-		if _board[line[0]] != 0 and _board[line[0]] == _board[line[1]] and _board[line[1]] == _board[line[2]]:
-			return _board[line[0]]
-	for i in _board:
-		if i == 0:
-			return 0  # Continue playing
+	for player in range(1, 3):
+		# Check horizontal
+		for i in range(3):
+			if _board[i * 3] == player and _board[i * 3 + 1] == player and _board[i * 3 + 2] == player:
+				return player
+
+		# Check vertical
+		for i in range(3):
+			if _board[i] == player and _board[i + 3] == player and _board[i + 6] == player:
+				return player
+
+		# Check diagonals
+		if (_board[0] == player and _board[4] == player and _board[8] == player) or (_board[2] == player and _board[4] == player and _board[6] == player):
+			return player
+
+	# Check for draw
+	for i in range(9):
+		if _board[i] == 0:
+			return 0  # Game continues
+
 	return -1  # Draw
 
 

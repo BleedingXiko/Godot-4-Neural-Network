@@ -121,7 +121,7 @@ func predict(current_states: Array, reward_of_previous_state: float, done: bool 
 		previous_state = current_states
 		previous_action = action_to_take
 	
-	if steps_completed % update_target_every_steps == 0:
+	if steps_completed % update_target_every_steps == 0 and is_learning:
 		update_target_network()
 
 	if steps_completed % decay_per_steps == 0:
