@@ -36,8 +36,16 @@ var previous_state: Array = []
 var previous_action: int
 
 func _init(config: Dictionary) -> void:
-
 	# Configuring hyper-parameters from the config dictionary
+	set_config(config)
+	# Initialize the neural network with fixed architecture
+	neural_network = NeuralNetworkAdvanced.new(config)
+	
+	# Initialize the target network if required
+	if use_target_network:
+		target_neural_network = neural_network.copy()
+
+func set_config(config: Dictionary) -> void:
 	exploration_probability = config.get("exploration_probability", exploration_probability)
 	exploration_decreasing_decay = config.get("exploration_decreasing_decay", exploration_decreasing_decay)
 	min_exploration_probability = config.get("min_exploration_probability", min_exploration_probability)
@@ -55,12 +63,7 @@ func _init(config: Dictionary) -> void:
 	decay_per_steps = config.get("decay_per_steps", decay_per_steps)
 	print_debug_info = config.get("print_debug_info", print_debug_info)
 	exploration_strategy = config.get("exploration_strategy", exploration_strategy)
-
-	# Initialize the neural network with fixed architecture
-	neural_network = NeuralNetworkAdvanced.new(config)
-	# Initialize the target network if required
-	if use_target_network:
-		target_neural_network = neural_network.copy()
+	
 
 func add_layer(nodes: int, function: Dictionary = neural_network.ACTIVATIONS.SIGMOID):
 	neural_network.add_layer(nodes, function)
@@ -169,8 +172,7 @@ func predict(current_states: Array, reward_of_previous_state: float, done: bool 
 func save(path):
 	neural_network.save(path)
 
-func load(path, continue_learning: bool = false, exploration_prob: float = 0.2):
+func load(path, config: Dictionary = {"is_learning": false, "exploration_strategy": "softmax"}):
 	neural_network.load(path)
-	exploration_probability = exploration_prob
+	set_config(config)
 	update_target_network()
-	is_learning = continue_learning

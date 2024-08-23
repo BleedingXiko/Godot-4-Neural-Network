@@ -1,7 +1,6 @@
 extends Node2D
 
 var qt_x: QNetwork
-var qt_o: QNetwork
 var board = [0, 0, 0, 0, 0, 0, 0, 0, 0]
 var player = 1
 var waiting_for_input = false
@@ -16,14 +15,14 @@ var q_network_config = {
 	"exploration_decreasing_decay": 0.005,
 	"min_exploration_probability": 0.05,
 	"exploration_strategy": "softmax",
-	"discounted_factor": 0.95,
+	"discounted_factor": 1,
 	"decay_per_steps": 250,
-	"use_replay": false,
+	"use_replay": true,
 	"is_learning": true,
 	"use_target_network": true,
-	"update_target_every_steps": 3500,
-	"memory_capacity": 256,
-	"batch_size": 64,
+	"update_target_every_steps": 3000,
+	"memory_capacity": 2048,
+	"batch_size": 128,
 	"learning_rate": 0.000001,
 	"l2_regularization_strength": 0.001,
 	"use_l2_regularization": false,
@@ -37,25 +36,16 @@ var draws: int = 0
 
 func _ready() -> void:
 	qt_x = QNetwork.new(q_network_config)
-	qt_x.add_layer(9)
-	qt_x.add_layer(10, ACTIVATIONS.SWISH)
-	qt_x.add_layer(8, ACTIVATIONS.MISH)
-	qt_x.add_layer(9, ACTIVATIONS.SIGMOID)
-	
-	qt_o = QNetwork.new(q_network_config)
-	qt_o.add_layer(9)
-	qt_o.add_layer(12, ACTIVATIONS.TANH)
-	qt_o.add_layer(15, ACTIVATIONS.TANH)
-	qt_o.add_layer(9, ACTIVATIONS.SIGMOID)
+	qt_x.add_layer(9)  # Input layer (implicitly)
+	qt_x.add_layer(16, ACTIVATIONS.RELU)  # Hidden layer with ELU activation
+	qt_x.add_layer(12, ACTIVATIONS.RELU)
+	qt_x.add_layer(8, ACTIVATIONS.SWISH)   # Another hidden layer with ELU activation
+	qt_x.add_layer(9, ACTIVATIONS.LINEAR)  # Output layer with no activation function (linear)
+	#qt_x.load("user://qnet_ttt.data", q_network_config)
+	train_networks()
+	qt_x.save("user://qnet_ttt.data")
+	qt_x.load("user://qnet_ttt.data")
 
-	# Uncomment these lines if you need to train and save the networks
-	qt_o.load('user://qnet_x.data', false)
-	#qt_x.load('user://qnet_x.data', true, 1.0)
-	#train_networks()
-	#qt_o.save('user://qnet_o.data')
-	#qt_x.save('user://qnet_x.data')
-
-	# After training, you can play against the AI
 	print("Training complete. Ready to play!")
 	play_against_ai()
 	o_wins = 0
@@ -64,45 +54,37 @@ func _ready() -> void:
 
 func train_networks():
 	for i in range(50000):
-		init_board
+		init_board()
 		train_game()
 
 func train_game():
 	var done = false
-	var player_turn = randi_range(1, 2)
-	var previous_reward_x = -100.0
-	var previous_reward_o = -100.0
+	var previous_reward = 0.0
 	var current_reward: float
 
 	while not done:
-		var state = board
-		var action: int
+		var state = board.duplicate()
 
-		if player_turn == 1:
-			action = qt_x.predict(state, previous_reward_x)
-		else:
-			action = qt_o.predict(state, previous_reward_o)
+		# Predict action based on the current state and player
+		var action: int = qt_x.predict(state, previous_reward, done)
 
-		if update_board(player_turn, action):
-			current_reward = determine_value_training(board, player_turn)
+		if update_board(player, action):
+			current_reward = determine_value_training(board, player)
+			done = check_end_game()  # End the game if there's a win/loss/draw
 
-			if player_turn == 1:
-				previous_reward_x = (previous_reward_x + current_reward) / 2.0
-			else:
-				previous_reward_o = (previous_reward_o + current_reward) / 2.0
-
-			done = current_reward != 0.5  # The game ends if there's a win/loss or draw
+			# Update previous reward for the current player
+			previous_reward = current_reward
 		else:
 			# Invalid move, punish player
 			current_reward = -0.75
-
-			if player_turn == 1:
-				previous_reward_x = (previous_reward_x + current_reward) / 2.0
-			else:
-				previous_reward_o = (previous_reward_o + current_reward) / 2.0
-
 			done = true
+			previous_reward = current_reward
 
+		if not done:
+			player = switch_player(player)
+
+	# Ensure final state is processed
+	qt_x.predict(board, previous_reward, true)
 	update_win_counts(has_winner(board))
 
 func _input(event: InputEvent) -> void:
@@ -131,13 +113,7 @@ func _input(event: InputEvent) -> void:
 		$Timer.stop()
 		$Timer.emit_signal("timeout")
 
-func check_end_game() -> bool:
-	var winner = has_winner(board)
-	if winner != 0:
-		update_win_counts(winner)
-		init_board()  # Reset the board for a new game
-		return true
-	return false
+
 func play_against_ai():
 	init_board()
 	print_board()
@@ -149,7 +125,7 @@ func play_against_ai():
 			input_timer.start()
 			await input_timer.timeout
 		else:
-			var action = qt_o.predict(board, 0)
+			var action = qt_x.predict(board, 0, false)
 			if update_board(player, action):
 				print_board()
 				if check_end_game():
@@ -157,30 +133,34 @@ func play_against_ai():
 					continue  # Start a new game
 				player = switch_player(player)
 			else:
-				#print("AI made an invalid move, retrying...")
-					if update_board(player, randi() % 9):
-						print_board()
-						if check_end_game():
-							await get_tree().create_timer(2.0).timeout
-							continue  # Start a new game
-						player = switch_player(player)
-				# AI retries until a valid move is made
-
+				if update_board(player, randi() % 9):
+					print_board()
+					if check_end_game():
+						await get_tree().create_timer(2.0).timeout
+						continue  # Start a new game
+					player = switch_player(player)
 
 func ai_move(ai_player_turn: int) -> int:
 	var valid_move = false
 	while not valid_move:
-		var action = qt_o.predict(board, 0)
+		var action = qt_x.predict(board, 0, false)
 		if update_board(ai_player_turn, action):
 			print_board()
 			valid_move = true
-			#print("AI made an invalid move, retrying.")
-	
 	return ai_player_turn  # Return the current player as AI’s move is complete
 
 func init_board():
 	for i in range(9):
 		board[i] = 0
+
+func check_end_game() -> bool:
+	var winner = has_winner(board)
+	if winner != 0:
+		update_win_counts(winner)
+		init_board()  # Reset the board for a new game
+		return true
+	return false
+
 
 func update_board(player: int, index: int) -> bool:
 	if board[index] == 0:
@@ -193,22 +173,11 @@ func process_player_move(action: int):
 		print_board()
 		player = switch_player(player)  # Switch to AI
 	else:
-		#print("Invalid move. Try again.")
 		waiting_for_input = true  # Continue waiting for a valid input
-
-func determine_value(_board: Array) -> int:
-	var result = has_winner(_board)
-	if result == 1:  # X wins
-		return 1
-	elif result == 2:  # O wins
-		return 2
-	elif result == -1:  # Draw
-		return -1  # Draw
-	return 0  # Game continues
 
 func determine_value_training(_board: Array, player_turn: int) -> float:
 	var result = has_winner(_board)
-	
+
 	if result == 1:  # X wins
 		return 1.0 if player_turn == 1 else -1.0  # Positive reward for X, negative for O
 	elif result == 2:  # O wins
@@ -241,7 +210,6 @@ func has_winner(_board: Array) -> int:
 
 	return -1  # Draw
 
-
 func print_board():
 	var spacing = "\n"
 	var row = ""
@@ -251,7 +219,7 @@ func print_board():
 			symbol = "X"
 		elif board[i] == 2:
 			symbol = "O"
-		
+
 		row += symbol + " "
 		if (i + 1) % 3 == 0:
 			print(row)
