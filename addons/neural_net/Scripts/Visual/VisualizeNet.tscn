@@ -1,0 +1,9 @@
+[gd_scene load_steps=3 format=3 uid="uid://c4hm7rksuae77"]
+
+[ext_resource type="Script" path="res://addons/neural_net/Scripts/Visual/VisualizeNet.gd" id="1_g0crw"]
+[ext_resource type="Texture2D" uid="uid://bytkt3y6312gt" path="res://addons/neural_net/Scripts/Visual/node.png" id="2_63ih2"]
+
+[node name="VisualizeNet" type="Node2D"]
+script = ExtResource("1_g0crw")
+sprite_texture = ExtResource("2_63ih2")
+display_bias = true
