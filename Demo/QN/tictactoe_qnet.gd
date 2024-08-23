@@ -15,12 +15,13 @@ var q_network_config = {
 	"exploration_probability": 1.0,
 	"exploration_decreasing_decay": 0.005,
 	"min_exploration_probability": 0.05,
+	"exploration_strategy": "softmax",
 	"discounted_factor": 0.95,
 	"decay_per_steps": 250,
 	"use_replay": false,
 	"is_learning": true,
 	"use_target_network": true,
-	"update_target_every_steps": 1500,
+	"update_target_every_steps": 3500,
 	"memory_capacity": 256,
 	"batch_size": 64,
 	"learning_rate": 0.000001,
@@ -37,16 +38,18 @@ var draws: int = 0
 func _ready() -> void:
 	qt_x = QNetwork.new(q_network_config)
 	qt_x.add_layer(9)
-	qt_x.add_layer(8, ACTIVATIONS.TANH)
+	qt_x.add_layer(10, ACTIVATIONS.SWISH)
+	qt_x.add_layer(8, ACTIVATIONS.MISH)
 	qt_x.add_layer(9, ACTIVATIONS.SIGMOID)
 	
 	qt_o = QNetwork.new(q_network_config)
 	qt_o.add_layer(9)
 	qt_o.add_layer(12, ACTIVATIONS.TANH)
+	qt_o.add_layer(15, ACTIVATIONS.TANH)
 	qt_o.add_layer(9, ACTIVATIONS.SIGMOID)
 
 	# Uncomment these lines if you need to train and save the networks
-	qt_o.load('user://qnet_o.data', false)
+	qt_o.load('user://qnet_x.data', false)
 	#qt_x.load('user://qnet_x.data', true, 1.0)
 	#train_networks()
 	#qt_o.save('user://qnet_o.data')
@@ -60,8 +63,8 @@ func _ready() -> void:
 	draws = 0
 
 func train_networks():
-	while qt_x.exploration_probability > qt_x.min_exploration_probability:
-		init_board()
+	for i in range(50000):
+		init_board
 		train_game()
 
 func train_game():

@@ -26,35 +26,36 @@ var q_network_config = {
 	"exploration_probability": 1.0,
 	"exploration_decreasing_decay": 0.005,
 	"min_exploration_probability": 0.15,
+	"exploration_strategy": "softmax",
 	"discounted_factor": 0.95,
 	"decay_per_steps": 250,
-	"use_replay": false,
+	"use_replay": true,
 	"is_learning": true,
 	"use_target_network": true,
-	"update_target_every_steps": 1500,
-	"memory_capacity": 2048,
-	"batch_size": 512,
+	"update_target_every_steps": 3000,
+	"memory_capacity": 1024,
+	"batch_size": 128,
 	"learning_rate": 0.0001, 
 	"l2_regularization_strength": 0.001,
 	"use_l2_regularization": false,
 }
 
 var initial_grid := [
-	0, 2, 0, 0, 0, 0,
-	0, 0, 0, 0, 2, 0,
-	2, 0, 0, 2, 0, 0,
+	0, -1, 0, 0, 0, 0,
+	0, 0, 0, 0, -1, 0,
+	-1, 0, 0, -1, 0, 0,
 	0, 0, 0, 0, 0, 0,
 	0, 0, 0, 0, 0, 0,
-	0, 0, 0, 2, 0, 0
+	0, 0, 0, -1, 0, 0
 ]
 
 var grid := []
 
 func _ready() -> void:
 	qnet = QNetwork.new(q_network_config)
-	qnet.add_layer(36)
-	qnet.add_layer(8, ACTIVATIONS.SWISH)
-	qnet.add_layer(10, ACTIVATIONS.RELU)
+	qnet.add_layer(initial_grid.size())
+	qnet.add_layer(8, ACTIVATIONS.SIGMOID)
+	qnet.add_layer(10, ACTIVATIONS.SIGMOID)
 	qnet.add_layer(4, ACTIVATIONS.SIGMOID)
 	update_grid(row, column, target)
 
@@ -91,7 +92,7 @@ func _on_timer_timeout():
 	previous_reward = 0.0
 		
 	if is_out_bound(action_to_do):
-		previous_reward -= 0.75
+		previous_reward -= 1
 		done = true
 	elif row * 6 + column in punish_states:
 		previous_reward -= 0.5

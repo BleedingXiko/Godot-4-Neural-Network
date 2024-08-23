@@ -18,6 +18,9 @@ var l2_regularization_strength: float = 0.001
 var decay_per_steps: int = 100
 var print_debug_info: bool = false
 
+# Exploration strategy: "epsilon_greedy" or "softmax"
+var exploration_strategy: String = "epsilon_greedy"
+
 # Replay memory
 var memory_capacity: int = 300
 var replay_memory: Array = []
@@ -33,7 +36,6 @@ var previous_state: Array = []
 var previous_action: int
 
 func _init(config: Dictionary) -> void:
-
 
 	# Configuring hyper-parameters from the config dictionary
 	exploration_probability = config.get("exploration_probability", exploration_probability)
@@ -52,6 +54,7 @@ func _init(config: Dictionary) -> void:
 	l2_regularization_strength = config.get("l2_regularization_strength", l2_regularization_strength)
 	decay_per_steps = config.get("decay_per_steps", decay_per_steps)
 	print_debug_info = config.get("print_debug_info", print_debug_info)
+	exploration_strategy = config.get("exploration_strategy", exploration_strategy)
 
 	# Initialize the neural network with fixed architecture
 	neural_network = NeuralNetworkAdvanced.new(config)
@@ -80,7 +83,6 @@ func update_target_network():
 
 func train_batch(batch):
 	for experience in batch:
-		#var current_q_values = neural_network.predict(experience["state"])
 		var max_future_q: float
 		if use_target_network:
 			max_future_q = target_neural_network.predict(experience["next_state"]).max()
@@ -91,6 +93,27 @@ func train_batch(batch):
 		target_q_values[experience["action"]] = target_q_value
 		neural_network.train(experience["state"], target_q_values)
 
+func softmax(q_values: Array) -> Array:
+	var exp_values = []
+	var sum_exp = 0.0
+	for q in q_values:
+		var exp_q = exp(q)
+		exp_values.append(exp_q)
+		sum_exp += exp_q
+	var probabilities = []
+	for exp_q in exp_values:
+		probabilities.append(exp_q / sum_exp)
+	return probabilities
+
+func choose_action_softmax(q_values: Array) -> int:
+	var probabilities = softmax(q_values)
+	var cumulative_prob = 0.0
+	for i in range(probabilities.size()):
+		cumulative_prob += probabilities[i]
+		if randf() < cumulative_prob:
+			return i
+	return probabilities.size() - 1
+
 func predict(current_states: Array, reward_of_previous_state: float, done: bool = false) -> int:
 	var current_q_values = neural_network.predict(current_states)
 	
@@ -100,6 +123,7 @@ func predict(current_states: Array, reward_of_previous_state: float, done: bool 
 			if replay_memory.size() >= batch_size:
 				var batch = sample_memory()
 				train_batch(batch)
+			
 		else:
 			var max_future_q: int
 			if use_target_network:
@@ -112,11 +136,18 @@ func predict(current_states: Array, reward_of_previous_state: float, done: bool 
 			neural_network.train(previous_state, target_q_values)
 
 	var action_to_take: int
-	if randf() < exploration_probability:
-		action_to_take = randi() % current_q_values.size()
+	if is_learning:
+		if exploration_strategy == "epsilon_greedy":
+			if randf() < exploration_probability:
+				action_to_take = randi() % current_q_values.size()
+			else:
+				action_to_take = current_q_values.find(current_q_values.max())
+			exploration_probability = max(min_exploration_probability, exploration_probability - exploration_decreasing_decay)
+			
+		elif exploration_strategy == "softmax":
+			action_to_take = choose_action_softmax(current_q_values)
 	else:
 		action_to_take = current_q_values.find(current_q_values.max())
-
 	if is_learning:
 		previous_state = current_states
 		previous_action = action_to_take
@@ -125,7 +156,6 @@ func predict(current_states: Array, reward_of_previous_state: float, done: bool 
 		update_target_network()
 
 	if steps_completed % decay_per_steps == 0:
-		exploration_probability = max(min_exploration_probability, exploration_probability - exploration_decreasing_decay)
 		if print_debug_info:
 			print("Total steps completed:", steps_completed)
 			print("Current exploration probability:", exploration_probability)
