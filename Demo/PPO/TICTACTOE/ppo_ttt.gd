@@ -21,6 +21,25 @@ var critic_config = {
 	"l2_regularization_strength": 0.01
 }
 
+var training_config = {
+	"gamma": 0.95,
+	"epsilon_clip": 0.2,
+	"update_steps": 80,
+	"max_memory_size": 10000,
+	"batch_size": 64,
+	"lambda": 0.95,
+	"entropy_beta": 0.01,
+	"initial_learning_rate": 0.001,
+	"min_learning_rate": 0.0001,
+	"decay_rate": 0.99,
+	"clip_value": 0.2,
+	"use_gae": true,
+	"use_entropy": true,
+	"use_target_network": true,
+	"use_gradient_clipping": true,
+	"use_learning_rate_scheduling": true
+}
+
 var x_wins: int = 0
 var o_wins: int = 0
 var draws: int = 0
@@ -30,7 +49,7 @@ var draws: int = 0
 func _ready() -> void:
 	#print("Initializing PPO...")
 	ppo = PPO.new(actor_config, critic_config)
-
+	ppo.set_config(training_config)
 	# Actor network: 9 outputs corresponding to the 9 possible moves on the board
 	ppo.actor.add_layer(9)
 	ppo.actor.add_layer(6, ACTIVATIONS.RELU)  # Hidden layer
@@ -44,7 +63,7 @@ func _ready() -> void:
 	#print("PPO initialized successfully.")
 
 	# Train the network before starting
-	ppo.load("user://ppo_ttt.data")
+	#ppo.load("user://ppo_ttt.data")
 	train_networks()
 	ppo.save("user://ppo_ttt.data")
 	ppo.load("user://ppo_ttt.data")
@@ -56,7 +75,7 @@ func _ready() -> void:
 	draws = 0
 
 func train_networks():
-	for i in range(50000):
+	for i in range(20000):
 		init_board()
 		train_game()
 

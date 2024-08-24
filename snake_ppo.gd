@@ -1,6 +1,6 @@
 extends Node2D
 
-const GRID_SIZE = Vector2i(4, 4)  # The size of the grid (10x10)
+const GRID_SIZE = Vector2i(6, 6)  # The size of the grid (10x10)
 const EMPTY = 0
 const SNAKE_HEAD = 1
 const SNAKE_BODY = -1
@@ -12,27 +12,42 @@ var direction: Vector2i = Vector2i(1, 0)  # Start moving right
 var food_position: Vector2i = Vector2i.ZERO
 var game_over: bool = false
 
-var dqn: QNetwork
+var ppo: PPO
 var training_done: bool = false
+var af = Activation.new()
+var ACTIVATIONS = af.get_functions()
 
-# DQN configurations
-var dqn_config = {
-	"print_debug_info": false,
-	"exploration_probability": 1.0,
-	"exploration_decreasing_decay": 0.005,
-	"min_exploration_probability": 0.05,
-	"exploration_strategy": "softmax",
-	"discounted_factor": 0.95,
-	"decay_per_steps": 250,
-	"use_replay": true,
-	"is_learning": true,
-	"use_target_network": true,
-	"update_target_every_steps": 1000,
-	"memory_capacity": 2048,
-	"batch_size": 64,
+
+# PPO configurations
+var actor_config = {
 	"learning_rate": 0.0001,
-	"l2_regularization_strength": 0.001,
 	"use_l2_regularization": false,
+	"l2_regularization_strength": 0.001
+}
+
+var critic_config = {
+	"learning_rate": 0.0001,
+	"use_l2_regularization": false,
+	"l2_regularization_strength": 0.01
+}
+
+var training_config = {
+	"gamma": 0.95,
+	"epsilon_clip": 0.2,
+	"update_steps": 80,
+	"max_memory_size": 20000,
+	"batch_size": 64,
+	"lambda": 0.95,
+	"entropy_beta": 0.01,
+	"initial_learning_rate": 0.001,
+	"min_learning_rate": 0.0001,
+	"decay_rate": 0.99,
+	"clip_value": 0.2,
+	"use_gae": true,
+	"use_entropy": true,
+	"use_target_network": true,
+	"use_gradient_clipping": true,
+	"use_learning_rate_scheduling": true
 }
 
 func _ready():
@@ -40,23 +55,25 @@ func _ready():
 	place_snake()
 	spawn_food()
 
-	# Initialize DQN with the provided configurations
-	dqn = QNetwork.new(dqn_config)
-	dqn.add_layer(4 * 4, dqn.neural_network.ACTIVATIONS.RELU)
-	dqn.add_layer(32, dqn.neural_network.ACTIVATIONS.RELU)
-	dqn.add_layer(4, dqn.neural_network.ACTIVATIONS.SIGMOID)  # 4 possible actions (up, down, left, right)
-	
-	dqn.load("res://dqn_snake.data", {"is_learning": true})
+	# Initialize PPO with the provided configurations
+	ppo = PPO.new(actor_config, critic_config)
+	ppo.set_config(training_config)
+	ppo.actor.add_layer(6 * 6)
+	ppo.actor.add_layer(64, ACTIVATIONS.RELU)
+	ppo.actor.add_layer(4, ACTIVATIONS.SIGMOID)  # Using SIGMOID activation for 4 possible actions (up, down, left, right)
+
+	ppo.critic.add_layer(6 * 6)
+	ppo.critic.add_layer(48, ACTIVATIONS.RELU)
+	ppo.critic.add_layer(1, ACTIVATIONS.LINEAR)
 
 	# Train the agent
-	for i in range(500):  # Adjust the number of training episodes as needed
+	for i in range(50):  # Adjust the number of training episodes as needed
 		print("Training episode:", i + 1)
 		run_training_episode()
 
 	training_done = true
 	print("Training complete!")
-	
-	dqn.save("res://dqn_snake.data")
+	ppo.save("res://ppo_snake.data")
 
 	# Now, visualize the trained agent playing the game by printing the board
 	visualize_gameplay()
@@ -70,20 +87,19 @@ func initialize_grid():
 		grid.append(row)
 
 func place_snake():
-	# Calculate the center of the grid
+	   # Calculate the center of the grid
 	var center_x = GRID_SIZE.x / 2
 	var center_y = GRID_SIZE.y / 2
 	
 	# Start the snake at the center of the grid
 	snake = [Vector2i(center_x, center_y)]
-	grid[snake[0].x][snake[0].y] = SNAKE_BODY
+	grid[snake[0].x][snake[0].y] = SNAKE_HEAD
 
 func spawn_food():
 	var x = randi() % GRID_SIZE.x
 	var y = randi() % GRID_SIZE.y
 	food_position = Vector2i(x, y)
 	grid[food_position.x][food_position.y] = FOOD
-
 
 func move_snake():
 	if game_over:
@@ -110,12 +126,11 @@ func move_snake():
 		grid[tail.x][tail.y] = EMPTY  # Clear the tail position
 
 	# Update the grid to reflect the new snake position
-	# Mark the tail segments with -1 and the head with 1
-	grid[new_head.x][new_head.y] = 1  # Mark the new head
+	# Mark the head with 1 and the tail with -1
+	grid[new_head.x][new_head.y] = SNAKE_HEAD  # Mark the new head
 	for i in range(1, snake.size()):
 		var segment = snake[i]
-		grid[segment.x][segment.y] = -1  # Mark the tail
-
+		grid[segment.x][segment.y] = SNAKE_BODY  # Mark the tail
 
 func run_training_episode():
 	initialize_grid()
@@ -124,14 +139,15 @@ func run_training_episode():
 	game_over = false  # Ensure game_over is reset
 	while not game_over:
 		var state = get_state()
-		var action = dqn.predict(state, 0, false)  # DQN decides the action
+		var action = ppo.get_action(state)
 		apply_action(action)
 		move_snake()
 
 		if not game_over:
 			var reward = 1 if snake[0] == food_position else 0
 			var next_state = get_state()
-			dqn.predict(next_state, reward, game_over)
+			ppo.remember(state, action, reward, next_state, game_over)
+			ppo.train()
 
 func apply_action(action: int):
 	var proposed_direction: Vector2i
@@ -159,7 +175,6 @@ func get_state() -> Array:
 			state.append(grid[x][y])
 	return state
 
-
 func visualize_gameplay():
 	if not training_done:
 		return
@@ -171,7 +186,7 @@ func visualize_gameplay():
 
 	while not game_over:
 		var state = get_state()
-		var action = dqn.predict(state, 0, false)
+		var action = ppo.get_action(state)
 		apply_action(action)
 		move_snake()
 
