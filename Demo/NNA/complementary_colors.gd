@@ -6,7 +6,7 @@ var nnas: NeuralNetworkAdvanced
 @onready var output: ColorRect = $output
 
 var network_config = {
-	"learning_rate": 0.001,
+	"learning_rate": 0.01,
 	"l2_regularization_strength": 0.001,
 	"use_l2_regularization": false,
 }
@@ -15,7 +15,6 @@ var activation_functions = [
 	"SIGMOID",
 	"RELU",
 	"TANH",
-	"PRELU",
 	"SWISH",
 	"MISH"
 ]
@@ -28,16 +27,17 @@ func _ready() -> void:
 	nnas.add_layer(3)
 
 	# Randomly choose the number of hidden layers (between 1 and 3)
-	var num_hidden_layers = randi() % 2 + 1
+	var num_hidden_layers = randi_range(1, 3)
 
-	for i in range(num_hidden_layers):
-		# Randomly choose the number of neurons for this layer (between 1 and 10)
-		var num_neurons = randi() % 4 + 3
-		# Randomly choose an activation function for this layer
-		var activation_function_name = activation_functions.pick_random()
-		var activation_function = nnas.ACTIVATIONS[activation_function_name]
-		# Add the layer to the network
-		nnas.add_layer(num_neurons, activation_function)
+	nnas.add_layer(4, nnas.ACTIVATIONS.SWISH)
+	#for i in range(num_hidden_layers):
+		## Randomly choose the number of neurons for this layer (between 1 and 10)
+		#var num_neurons = randi_range(3, 6)
+		## Randomly choose an activation function for this layer
+		#var activation_function_name = activation_functions.pick_random()
+		#var activation_function = nnas.ACTIVATIONS[activation_function_name]
+		## Add the layer to the network
+		#nnas.add_layer(num_neurons, activation_function)
 
 	# Output layer with 3 neurons (for RGB values)
 	nnas.add_layer(3, nnas.ACTIVATIONS["LINEAR"])
@@ -62,7 +62,7 @@ func start_training() -> void:
 	output.color = Color(prediction[0], prediction[1], prediction[2])
 
 	# Train the network
-	for i in range(100):
+	for i in range(10):
 		nnas.train(normalized_input, normalized_output)
 	
 	# After training, visualize the network

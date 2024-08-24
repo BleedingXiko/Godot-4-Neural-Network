@@ -26,7 +26,7 @@ var q_network_config = {
 	"exploration_probability": 1.0,
 	"exploration_decreasing_decay": 0.005,
 	"min_exploration_probability": 0.15,
-	"exploration_strategy": "softmax",
+	"exploration_strategy": "epsilon_greedy",
 	"discounted_factor": 0.95,
 	"decay_per_steps": 250,
 	"use_replay": true,
@@ -108,6 +108,7 @@ func _on_timer_timeout():
 	$player.position = Vector2(96 * column + 16, 96 * (5 - row) + 16)  # Adjust for correct visual alignment
 	$lr.text = str(qnet.exploration_probability)
 	$target.text = str(target)
+	print_grid()
 
 func update_grid(row: int, column: int, target: int):
 	# Reset the grid to the initial configuration
@@ -165,4 +166,4 @@ func _on_save_pressed():
 	qnet.save('user://qnet.data')
 
 func _on_load_pressed():
-	qnet.load('user://qnet.data', false, 0.05)
+	qnet.load('user://qnet.data')
