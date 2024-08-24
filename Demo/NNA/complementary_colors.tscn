@@ -7,6 +7,12 @@
 script = ExtResource("1_2fkeb")
 
 [node name="VisualizeNet" parent="." instance=ExtResource("1_5shkd")]
+position = Vector2(91, 95)
+scale = Vector2(0.75, 0.75)
+
+[node name="VisualizeNet2" parent="." instance=ExtResource("1_5shkd")]
+position = Vector2(674, 115)
+scale = Vector2(0.75, 0.75)
 
 [node name="input1" type="ColorRect" parent="."]
 offset_left = 272.0

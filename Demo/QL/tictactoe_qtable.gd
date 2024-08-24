@@ -1,7 +1,6 @@
 extends Node2D
 
-var qt_x: QTable
-var qt_o: QTable
+var qt: QTable
 var board = [0, 0, 0, 0, 0, 0, 0, 0, 0]
 var player = 1
 
@@ -17,30 +16,28 @@ var current_action: int = -1
 var q_table_config = {
 	"print_debug_info": false,
 	"is_learning": true,
-	"action_threshold": 0.25,
+	"action_threshold": 0.10,
 	"exploration_decreasing_decay": 0.0005,
 	"exploration_strategy": "ucb",
 	"exploration_parameter": 0.3,
 	"min_exploration_probability": 0.15,
-	"discounted_factor": 0.9,
-	"learning_rate": 0.1,
+	"discounted_factor": 1,
+	"learning_rate": 0.01,
 	"decay_per_steps": 100,
 	"max_state_value": 2,
 	"random_weights": false,
 }
 
 func _ready() -> void:
-	qt_x = QTable.new()
-	qt_x.init(9 * 3, 9, q_table_config)
-	qt_o = QTable.new()
-	qt_o.init(9 * 3, 9, q_table_config)
+	qt = QTable.new()
+	qt.init(9 * 3, 9, q_table_config)
 	
-	#for i in range(20000):
+	# Load previously saved QTable for gameplay
+	qt.load('user://qt_ttt.data', {"is_learning": false, "exploration_strategy": "epsilon_greedy"})
+	#for i in range(200000):
 		#init_board()
 		#play_game()
-	# Load previously saved QTables for gameplay
-	qt_o.load('user://qt_o.data', {"is_learning": false,"exploration_strategy": "ucb",})
-
+	qt.save('user://qt_ttt.data')
 	print("Ready to play against AI!")
 	x_wins = 0
 	o_wins = 0
@@ -59,43 +56,29 @@ func hash_state(state_array: Array, hash_range: int) -> int:
 func play_game():
 	var done = false
 	var player_turn = randi_range(1, 2)
-	var previous_reward_x = -100.0
-	var previous_reward_o = -100.0
+	var previous_reward = -100.0
 	var current_reward: float
 	
 	while not done:
 		var state = hash_state(board, 9 * 3)
-		var action: int
-		
-		if player_turn == 1:
-			action = qt_x.predict([state], previous_reward_x)
-		else:
-			action = qt_o.predict([state], previous_reward_o)
+		var action: int = qt.predict([state], previous_reward)
 
 		if update_board(player_turn, action):
 			current_reward = determine_value_training(board, player_turn)
 
-			if player_turn == 1:
-				# Update X's rewards
-				previous_reward_x = (previous_reward_x + current_reward) / 2.0
-			else:
-				# Update O's rewards
-				previous_reward_o = (previous_reward_o + current_reward) / 2.0
+			# Update the reward for the current player
+			previous_reward = (previous_reward + current_reward) / 2.0
 
-			done = current_reward != 0.0  # The game ends if there's a win/loss or draw
+			done = current_reward != -1  # The game ends if there's a win/loss or draw
 
 			if not done:
 				player_turn = switch_player(player_turn)
 		else:
 			# Invalid move, punish player
-			current_reward = -0.75
-
-			if player_turn == 1:
-				previous_reward_x = (previous_reward_x + current_reward) / 2.0
-			else:
-				previous_reward_o = (previous_reward_o + current_reward) / 2.0
-
+			current_reward = -1.5
+			previous_reward = (previous_reward + current_reward) / 2.0
 			done = true
+		
 
 	update_win_counts(has_winner(board))
 
@@ -136,10 +119,10 @@ func determine_value_training(_board: Array, player_turn: int) -> float:
 	var result = has_winner(_board)
 	
 	if result == 1:  # X wins
-		return 1.0 if player_turn == 1 else -1.0  # Positive reward for X, negative for O
+		return 2.0 if player_turn == 1 else -2.0  # Positive reward for X, negative for O
 	elif result == 2:  # O wins
-		return 1.0 if player_turn == 2 else -1.0  # Positive reward for O, negative for X
-	return 0.0  # Draw
+		return 2.0 if player_turn == 2 else -2.0  # Positive reward for O, negative for X
+	return -1 # Draw
 
 func play_against_ai():
 	init_board()
@@ -152,7 +135,7 @@ func play_against_ai():
 			input_timer.start()
 			await input_timer.timeout
 		else:
-			var action = qt_o.predict([hash_state(board, 9 * 3)], 0)
+			var action = qt.predict([hash_state(board, 9 * 3)], 0)
 			if update_board(player, action):
 				print_board()
 				if check_end_game():
@@ -162,18 +145,17 @@ func play_against_ai():
 			else:
 				print("AI made an invalid move, retrying...")
 				if randf() > 0.5:
-						if update_board(player, randi() % 9):
-							print_board()
-							if check_end_game():
-								await get_tree().create_timer(2.0).timeout
-								continue  # Start a new game
-							player = switch_player(player)
+					if update_board(player, randi() % 9):
+						print_board()
+						if check_end_game():
+							await get_tree().create_timer(2.0).timeout
+							continue  # Start a new game
+						player = switch_player(player)
 				# AI retries until a valid move is made
 
 func init_board():
 	for i in range(9):
 		board[i] = 0
-
 
 func update_board(player: int, index: int) -> bool:
 	if index >= 0 and index < 9 and board[index] == 0:
@@ -211,7 +193,6 @@ func update_win_counts(winner: int):
 	else:
 		draws += 1
 	print("X Wins: ", x_wins, " O Wins: ", o_wins, " Draws: ", draws)
-	print_board()
 
 func switch_player(current_player: int) -> int:
 	return 2 if current_player == 1 else 1

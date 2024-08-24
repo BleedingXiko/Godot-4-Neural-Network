@@ -27,8 +27,6 @@ AI_Scene = ExtResource("6_qs1wj")
 Batch_Size = 35
 Generation_Delay = 8
 input_nodes = 9
-hidden_nodes = 3
-output_nodes = 2
 random_population = 6
 reproduced_population = 18
 

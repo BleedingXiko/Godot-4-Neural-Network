@@ -7,7 +7,7 @@ var nnas: NeuralNetworkAdvanced
 
 var network_config = {
 	"learning_rate": 0.01,
-	"l2_regularization_strength": 0.001,
+	"l2_regularization_strength": 0.00001,
 	"use_l2_regularization": false,
 }
 
@@ -21,6 +21,7 @@ var activation_functions = [
 
 func _ready() -> void:
 	randomize()
+	seed(randi())
 	nnas = NeuralNetworkAdvanced.new(network_config)
 
 	# Input layer with 3 neurons (for RGB values)
@@ -29,7 +30,7 @@ func _ready() -> void:
 	# Randomly choose the number of hidden layers (between 1 and 3)
 	var num_hidden_layers = randi_range(1, 3)
 
-	nnas.add_layer(4, nnas.ACTIVATIONS.SWISH)
+	nnas.add_layer(6, nnas.ACTIVATIONS.LINEAR)
 	#for i in range(num_hidden_layers):
 		## Randomly choose the number of neurons for this layer (between 1 and 10)
 		#var num_neurons = randi_range(3, 6)
@@ -40,7 +41,9 @@ func _ready() -> void:
 		#nnas.add_layer(num_neurons, activation_function)
 
 	# Output layer with 3 neurons (for RGB values)
-	nnas.add_layer(3, nnas.ACTIVATIONS["LINEAR"])
+	nnas.add_layer(3, nnas.ACTIVATIONS.LINEAR)
+	$VisualizeNet.visualize(nnas)
+	$VisualizeNet2.visualize(nnas)
 
 
 func _input(event: InputEvent) -> void:
@@ -66,4 +69,4 @@ func start_training() -> void:
 		nnas.train(normalized_input, normalized_output)
 	
 	# After training, visualize the network
-	$VisualizeNet.visualize(nnas)
+	$VisualizeNet2.visualize(nnas)

@@ -1,6 +1,6 @@
 extends Node2D
 
-var qt_x: QNetwork
+var ppo: PPO
 var board = [0, 0, 0, 0, 0, 0, 0, 0, 0]
 var player = 1
 var waiting_for_input = false
@@ -9,23 +9,16 @@ var current_action: int = -1
 var af = Activation.new()
 var ACTIVATIONS = af.get_functions()
 
-var q_network_config = {
-	"print_debug_info": false,
-	"exploration_probability": 1.0,
-	"exploration_decreasing_decay": 0.005,
-	"min_exploration_probability": 0.05,
-	"exploration_strategy": "softmax",
-	"discounted_factor": 1,
-	"decay_per_steps": 250,
-	"use_replay": false,
-	"is_learning": true,
-	"use_target_network": true,
-	"update_target_every_steps": 1000,
-	"memory_capacity": 2048,
-	"batch_size": 64,
+var actor_config = {
 	"learning_rate": 0.0001,
-	"l2_regularization_strength": 0.001,
 	"use_l2_regularization": false,
+	"l2_regularization_strength": 0.001
+}
+
+var critic_config = {
+	"learning_rate": 0.0001,
+	"use_l2_regularization": false,
+	"l2_regularization_strength": 0.01
 }
 
 var x_wins: int = 0
@@ -35,14 +28,26 @@ var draws: int = 0
 @onready var input_timer: Timer = $Timer
 
 func _ready() -> void:
-	qt_x = QNetwork.new(q_network_config)
-	qt_x.add_layer(9)  # Input layer (implicitly)
-	qt_x.add_layer(16, ACTIVATIONS.RELU)  # Hidden layer with ELU activation
-	qt_x.add_layer(9, ACTIVATIONS.LINEAR)  # Output layer with no activation function (linear)
-	#qt_x.load("user://qnet_ttt.data", q_network_config)
-	#train_networks()
-	#qt_x.save("user://qnet_ttt.data")
-	qt_x.load("user://qnet_ttt.data")
+	#print("Initializing PPO...")
+	ppo = PPO.new(actor_config, critic_config)
+
+	# Actor network: 9 outputs corresponding to the 9 possible moves on the board
+	ppo.actor.add_layer(9)
+	ppo.actor.add_layer(6, ACTIVATIONS.RELU)  # Hidden layer
+	ppo.actor.add_layer(9, ACTIVATIONS.SIGMOID)  # Output layer (9 possible actions)
+
+	# Critic network: 1 output for value estimation
+	ppo.critic.add_layer(9)
+	ppo.critic.add_layer(5, ACTIVATIONS.RELU)  # Hidden layer
+	ppo.critic.add_layer(1, ACTIVATIONS.SIGMOID)  # Output layer for value prediction
+
+	#print("PPO initialized successfully.")
+
+	# Train the network before starting
+	ppo.load("user://ppo_ttt.data")
+	train_networks()
+	ppo.save("user://ppo_ttt.data")
+	ppo.load("user://ppo_ttt.data")
 
 	print("Training complete. Ready to play!")
 	play_against_ai()
@@ -61,29 +66,34 @@ func train_game():
 	var current_reward: float
 
 	while not done:
-		var state = board.duplicate()
+		var state = board.duplicate()  # Duplicate the board state before the action
 
-		# Predict action based on the current state and player
-		var action: int = qt_x.predict(state, previous_reward, done)
+		# Predict action based on the current state and player using PPO
+		var action: int = ppo.get_action(state)
 
 		if update_board(player, action):
 			current_reward = determine_value_training(board, player)
 			done = check_end_game()  # End the game if there's a win/loss/draw
 
+			# Duplicate the board state after the action
+			var next_state = board.duplicate()
+
+			# Store the experience with pre-action and post-action states
+			ppo.remember(state, action, current_reward, next_state, done)
+
 			# Update previous reward for the current player
 			previous_reward = current_reward
 		else:
 			# Invalid move, punish player
-			current_reward = -0.5
+			current_reward = -0.75
 			done = true
 			previous_reward = current_reward
 
 		if not done:
 			player = switch_player(player)
 
-	# Ensure final state is processed
-	qt_x.predict(board, previous_reward, true)
-	update_win_counts(has_winner(board))
+	# Ensure final state is processed and train PPO
+	ppo.train()
 
 func _input(event: InputEvent) -> void:
 	if event.is_action_pressed("1"):
@@ -111,7 +121,6 @@ func _input(event: InputEvent) -> void:
 		$Timer.stop()
 		$Timer.emit_signal("timeout")
 
-
 func play_against_ai():
 	init_board()
 	print_board()
@@ -123,19 +132,25 @@ func play_against_ai():
 			input_timer.start()
 			await input_timer.timeout
 		else:
-			var action = qt_x.predict(board, 0, false)
+			var action = ppo.get_action(board)
 			if update_board(player, action):
 				print_board()
 				if check_end_game():
 					await get_tree().create_timer(2.0).timeout
 					continue  # Start a new game
 				player = switch_player(player)
-				continue  # Start a new game
+			else:
+				if update_board(player, randi() % 9):
+					print_board()
+					if check_end_game():
+						await get_tree().create_timer(2.0).timeout
+						continue  # Start a new game
+					player = switch_player(player)
 
 func ai_move(ai_player_turn: int) -> int:
 	var valid_move = false
 	while not valid_move:
-		var action = qt_x.predict(board, 0, false)
+		var action = ppo.get_action(board)
 		if update_board(ai_player_turn, action):
 			print_board()
 			valid_move = true
@@ -152,7 +167,6 @@ func check_end_game() -> bool:
 		init_board()  # Reset the board for a new game
 		return true
 	return false
-
 
 func update_board(player: int, index: int) -> bool:
 	if board[index] == 0:
@@ -174,7 +188,7 @@ func determine_value_training(_board: Array, player_turn: int) -> float:
 		return 1.0 if player_turn == 1 else -1.0  # Positive reward for X, negative for O
 	elif result == 2:  # O wins
 		return 1.0 if player_turn == 2 else -1.0  # Positive reward for O, negative for X
-	return 0.1 # Draw
+	return 0.1  # Draw
 
 func switch_player(player: int) -> int:
 	return 2 if player == 1 else 1
