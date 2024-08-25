@@ -43,13 +43,14 @@ func _ready():
 	# Initialize DQN with the provided configurations
 	dqn = QNetwork.new(dqn_config)
 	dqn.add_layer(4 * 4, dqn.neural_network.ACTIVATIONS.RELU)
+	dqn.add_layer(24, dqn.neural_network.ACTIVATIONS.RELU)
 	dqn.add_layer(32, dqn.neural_network.ACTIVATIONS.RELU)
 	dqn.add_layer(4, dqn.neural_network.ACTIVATIONS.SIGMOID)  # 4 possible actions (up, down, left, right)
 	
-	dqn.load("res://dqn_snake.data", {"is_learning": true})
+	#dqn.load("res://dqn_snake.data", dqn_config)
 
 	# Train the agent
-	for i in range(500):  # Adjust the number of training episodes as needed
+	for i in range(5000):  # Adjust the number of training episodes as needed
 		print("Training episode:", i + 1)
 		run_training_episode()
 
@@ -150,7 +151,7 @@ func apply_action(action: int):
 	else:
 		direction = proposed_direction
 
-	print("Direction updated to:", direction)
+	#print("Direction updated to:", direction)
 
 func get_state() -> Array:
 	var state: Array = []

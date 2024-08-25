@@ -25,20 +25,24 @@ var training_config = {
 	"gamma": 0.95,
 	"epsilon_clip": 0.2,
 	"update_steps": 80,
-	"max_memory_size": 10000,
+	"max_memory_size": 20000,
 	"batch_size": 64,
 	"lambda": 0.95,
 	"entropy_beta": 0.01,
 	"initial_learning_rate": 0.001,
 	"min_learning_rate": 0.0001,
-	"decay_rate": 0.99,
+	"decay_rate": 0.75,
 	"clip_value": 0.2,
+	"target_network_update_steps": 1000,  # Steps to update target network
+	"learning_rate_schedule_type": "accuracy_based",  # Type of learning rate scheduling ("constant", "exponential_decay", "linear_decay", "step_decay", "accuracy_based")
+	"accuracy_threshold": 0.95,  # Threshold for accuracy-based learning rate adjustment
 	"use_gae": true,
 	"use_entropy": true,
 	"use_target_network": true,
 	"use_gradient_clipping": true,
 	"use_learning_rate_scheduling": true
 }
+
 
 var x_wins: int = 0
 var o_wins: int = 0
@@ -75,7 +79,7 @@ func _ready() -> void:
 	draws = 0
 
 func train_networks():
-	for i in range(20000):
+	for i in range(20):
 		init_board()
 		train_game()
 

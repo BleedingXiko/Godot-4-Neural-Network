@@ -1,6 +1,6 @@
 extends Node2D
 
-const GRID_SIZE = Vector2i(6, 6)  # The size of the grid (10x10)
+const GRID_SIZE = Vector2i(4, 4)  # The size of the grid (10x10)
 const EMPTY = 0
 const SNAKE_HEAD = 1
 const SNAKE_BODY = -1
@@ -35,20 +35,24 @@ var training_config = {
 	"gamma": 0.95,
 	"epsilon_clip": 0.2,
 	"update_steps": 80,
-	"max_memory_size": 20000,
+	"max_memory_size": 10000,
 	"batch_size": 64,
 	"lambda": 0.95,
 	"entropy_beta": 0.01,
-	"initial_learning_rate": 0.001,
-	"min_learning_rate": 0.0001,
-	"decay_rate": 0.99,
+	"initial_learning_rate": 0.0001,
+	"min_learning_rate": 0.00001,
+	"decay_rate": 0.75,
 	"clip_value": 0.2,
+	"target_network_update_steps": 2000,  # Steps to update target network
+	"learning_rate_schedule_type": "accuracy_based",  # Type of learning rate scheduling ("constant", "exponential_decay", "linear_decay", "step_decay", "accuracy_based")
+	"accuracy_threshold": 0.95,  # Threshold for accuracy-based learning rate adjustment
 	"use_gae": true,
 	"use_entropy": true,
 	"use_target_network": true,
 	"use_gradient_clipping": true,
 	"use_learning_rate_scheduling": true
 }
+
 
 func _ready():
 	initialize_grid()
@@ -58,16 +62,17 @@ func _ready():
 	# Initialize PPO with the provided configurations
 	ppo = PPO.new(actor_config, critic_config)
 	ppo.set_config(training_config)
-	ppo.actor.add_layer(6 * 6)
-	ppo.actor.add_layer(64, ACTIVATIONS.RELU)
+	ppo.actor.add_layer(4 * 4)
+	ppo.actor.add_layer(23, ACTIVATIONS.RELU)
 	ppo.actor.add_layer(4, ACTIVATIONS.SIGMOID)  # Using SIGMOID activation for 4 possible actions (up, down, left, right)
 
-	ppo.critic.add_layer(6 * 6)
-	ppo.critic.add_layer(48, ACTIVATIONS.RELU)
+	ppo.critic.add_layer(4 * 4)
+	ppo.critic.add_layer(23, ACTIVATIONS.RELU)
 	ppo.critic.add_layer(1, ACTIVATIONS.LINEAR)
-
+	
+	#ppo.load("res://ppo_snake.data")
 	# Train the agent
-	for i in range(50):  # Adjust the number of training episodes as needed
+	for i in range(100):  # Adjust the number of training episodes as needed
 		print("Training episode:", i + 1)
 		run_training_episode()
 
@@ -132,22 +137,52 @@ func move_snake():
 		var segment = snake[i]
 		grid[segment.x][segment.y] = SNAKE_BODY  # Mark the tail
 
+
+var previous_distance_to_food = 0.0
+
+func calculate_distance_to_food() -> float:
+	return snake[0].distance_to(food_position)
+
+
 func run_training_episode():
 	initialize_grid()
 	place_snake()
 	spawn_food()
 	game_over = false  # Ensure game_over is reset
+	previous_distance_to_food = calculate_distance_to_food()
+	
 	while not game_over:
 		var state = get_state()
 		var action = ppo.get_action(state)
 		apply_action(action)
 		move_snake()
 
-		if not game_over:
-			var reward = 1 if snake[0] == food_position else 0
-			var next_state = get_state()
-			ppo.remember(state, action, reward, next_state, game_over)
-			ppo.train()
+		var reward: float = 0.0
+
+		if snake[0] == food_position:
+			reward += 10  # Reward for eating food
+		else:
+			reward += 0.1  # Small reward for surviving
+
+		# Calculate distance to food after moving
+		var distance_to_food = calculate_distance_to_food()
+
+		# Additional penalty for moving away from food
+		if distance_to_food > previous_distance_to_food:
+			reward -= 0.2
+		elif distance_to_food == previous_distance_to_food:
+			reward -= 0.1
+
+		previous_distance_to_food = distance_to_food
+
+		# Check if the game is over and apply a penalty
+		if game_over:
+			reward -= 10
+
+		var next_state = get_state()
+		ppo.remember(state, action, reward, next_state, game_over)
+		ppo.train()
+
 
 func apply_action(action: int):
 	var proposed_direction: Vector2i
@@ -166,7 +201,7 @@ func apply_action(action: int):
 	else:
 		direction = proposed_direction
 
-	print("Direction updated to:", direction)
+	#print("Direction updated to:", direction)
 
 func get_state() -> Array:
 	var state: Array = []
