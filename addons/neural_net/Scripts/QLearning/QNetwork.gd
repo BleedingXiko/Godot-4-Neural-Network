@@ -120,6 +120,7 @@ func choose_action_softmax(q_values: Array) -> int:
 
 func train(current_states: Array, reward_of_previous_state: float, done: bool = false) -> int:
 	var current_q_values = neural_network.predict(current_states)
+	var current_action = choose_action(current_states)
 	
 	# Handle the learning and updating process
 	if previous_state.size() != 0:
@@ -141,7 +142,7 @@ func train(current_states: Array, reward_of_previous_state: float, done: bool = 
 
 	# Update previous state and action for the next step
 	previous_state = current_states
-	previous_action = choose_action(current_states)
+	previous_action = current_action
 	
 	# Handle target network updates
 	if steps_completed % update_target_every_steps == 0:
