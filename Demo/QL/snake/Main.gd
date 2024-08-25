@@ -1,6 +1,6 @@
 extends Node2D
 
-const GRID_SIZE = Vector2i(4, 4)  # The size of the grid (10x10)
+const GRID_SIZE = Vector2i(10, 10)  # The size of the grid (4x4)
 const EMPTY = 0
 const SNAKE_HEAD = 1
 const SNAKE_BODY = -1
@@ -23,13 +23,13 @@ var dqn_config = {
 	"min_exploration_probability": 0.05,
 	"exploration_strategy": "softmax",
 	"discounted_factor": 0.95,
-	"decay_per_steps": 250,
+	"decay_per_steps": 100,
 	"use_replay": true,
 	"is_learning": true,
 	"use_target_network": true,
 	"update_target_every_steps": 1000,
 	"memory_capacity": 2048,
-	"batch_size": 64,
+	"batch_size": 128,
 	"learning_rate": 0.0001,
 	"l2_regularization_strength": 0.001,
 	"use_l2_regularization": false,
@@ -42,11 +42,12 @@ func _ready():
 
 	# Initialize DQN with the provided configurations
 	dqn = QNetwork.new(dqn_config)
-	dqn.add_layer(4 * 4, dqn.neural_network.ACTIVATIONS.RELU)
-	dqn.add_layer(24, dqn.neural_network.ACTIVATIONS.RELU)
-	dqn.add_layer(32, dqn.neural_network.ACTIVATIONS.RELU)
+	dqn.add_layer(10 * 10, dqn.neural_network.ACTIVATIONS.RELU)
+	dqn.add_layer(44, dqn.neural_network.ACTIVATIONS.ELU)
+	dqn.add_layer(62, dqn.neural_network.ACTIVATIONS.ELU)
 	dqn.add_layer(4, dqn.neural_network.ACTIVATIONS.SIGMOID)  # 4 possible actions (up, down, left, right)
 	
+	# Uncomment the next line if you have a pre-trained model to load
 	#dqn.load("res://dqn_snake.data", dqn_config)
 
 	# Train the agent
@@ -77,14 +78,23 @@ func place_snake():
 	
 	# Start the snake at the center of the grid
 	snake = [Vector2i(center_x, center_y)]
-	grid[snake[0].x][snake[0].y] = SNAKE_BODY
+	grid[snake[0].x][snake[0].y] = SNAKE_HEAD
 
 func spawn_food():
-	var x = randi() % GRID_SIZE.x
-	var y = randi() % GRID_SIZE.y
-	food_position = Vector2i(x, y)
-	grid[food_position.x][food_position.y] = FOOD
+	var empty_positions: Array = []
 
+	# Collect all empty positions on the grid
+	for x in range(GRID_SIZE.x):
+		for y in range(GRID_SIZE.y):
+			if grid[x][y] == EMPTY:
+				empty_positions.append(Vector2i(x, y))
+
+	if empty_positions.size() > 0:
+		# Randomly select one of the empty positions for food
+		food_position = empty_positions[randi() % empty_positions.size()]
+		grid[food_position.x][food_position.y] = FOOD
+	else:
+		print("No empty position available for spawning food!")
 
 func move_snake():
 	if game_over:
@@ -111,11 +121,10 @@ func move_snake():
 		grid[tail.x][tail.y] = EMPTY  # Clear the tail position
 
 	# Update the grid to reflect the new snake position
-	# Mark the tail segments with -1 and the head with 1
-	grid[new_head.x][new_head.y] = 1  # Mark the new head
+	grid[new_head.x][new_head.y] = SNAKE_HEAD  # Mark the new head
 	for i in range(1, snake.size()):
 		var segment = snake[i]
-		grid[segment.x][segment.y] = -1  # Mark the tail
+		grid[segment.x][segment.y] = SNAKE_BODY  # Mark the tail
 
 
 func run_training_episode():
@@ -125,14 +134,24 @@ func run_training_episode():
 	game_over = false  # Ensure game_over is reset
 	while not game_over:
 		var state = get_state()
-		var action = dqn.predict(state, 0, false)  # DQN decides the action
+		
+		# Use DQN to predict the action to take
+		var action = dqn.predict(state, 0, false)  # Predict the action based on the current state
+		
 		apply_action(action)
 		move_snake()
+		print_board()
 
-		if not game_over:
-			var reward = 1 if snake[0] == food_position else 0
-			var next_state = get_state()
-			dqn.predict(next_state, reward, game_over)
+		# Calculate the reward after moving the snake
+		var reward = 10 if snake[0] == food_position else -10 if game_over else 0.1
+		
+		var next_state = get_state()
+		
+		# Store the experience and train the DQN
+		dqn.predict(state, reward, game_over)
+
+		if game_over:
+			break
 
 func apply_action(action: int):
 	var proposed_direction: Vector2i
@@ -190,7 +209,6 @@ func visualize_gameplay():
 			print_board()
 
 func print_board():
-	print("Current Board:")
 	for y in range(GRID_SIZE.y):
 		var row = ""
 		for x in range(GRID_SIZE.x):

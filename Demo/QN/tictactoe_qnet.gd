@@ -40,9 +40,9 @@ func _ready() -> void:
 	qt_x.add_layer(16, ACTIVATIONS.RELU)  # Hidden layer with ELU activation
 	qt_x.add_layer(9, ACTIVATIONS.LINEAR)  # Output layer with no activation function (linear)
 	#qt_x.load("user://qnet_ttt.data", q_network_config)
-	#train_networks()
+	train_networks()
 	#qt_x.save("user://qnet_ttt.data")
-	qt_x.load("user://qnet_ttt.data")
+	#qt_x.load("user://qnet_ttt.data")
 
 	print("Training complete. Ready to play!")
 	play_against_ai()

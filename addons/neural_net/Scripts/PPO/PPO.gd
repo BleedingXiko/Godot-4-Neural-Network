@@ -62,6 +62,7 @@ func set_config(config: Dictionary) -> void:
 	use_target_network = config.get("use_target_network", use_target_network)
 	use_gradient_clipping = config.get("use_gradient_clipping", use_gradient_clipping)
 	use_learning_rate_scheduling = config.get("use_learning_rate_scheduling", use_learning_rate_scheduling)
+	
 
 func softmax(output_array: Array) -> Array:
 	var max_val: float = output_array.max()
@@ -123,71 +124,79 @@ func train():
 		print("No memory to train on.")
 		return
 
-	#print("Training PPO with memory size: ", memory.size())
+	var num_batches = memory.size() / batch_size
+	if num_batches == 0:
+		num_batches = 1  # Ensure at least one batch is processed
 
 	for step in range(update_steps):  # Adjust update steps as necessary
-		#print("Training step: ", step)
-		for sample in memory:
-			#print("Processing sample: ", sample)
-			var state: Array = sample["state"]
-			var action: int = sample["action"]
-			var reward: float = sample["reward"]
-			var next_state: Array = sample["next_state"]
-			var done: bool = sample["done"]
+		# Shuffle memory before creating mini-batches
+		memory.shuffle()
 
-			# Critic update (value function)
-			var value: float = critic.predict(state)[0]
+		for batch_idx in range(num_batches):
+			var start_idx = batch_idx * batch_size
+			var end_idx = min(start_idx + batch_size, memory.size())
+			var mini_batch = memory.slice(start_idx, end_idx, true)
 
-			var next_value: float
-			if use_target_network:
-				next_value = target_critic.predict(next_state)[0]
-			else:
-				next_value = critic.predict(next_state)[0]
+			for sample in mini_batch:
+				var state: Array = sample["state"]
+				var action: int = sample["action"]
+				var reward: float = sample["reward"]
+				var next_state: Array = sample["next_state"]
+				var done: bool = sample["done"]
 
-			if check_for_nan([value, next_value]):
-				print("Invalid values (NaN) from critic predict!")
-				return
+				# Critic update (value function)
+				var value: float = critic.predict(state)[0]
 
-			var target: float = reward + (1.0 - float(done)) * gamma * next_value
-			var advantage: float = target - value
-			critic.train(state, [target])  # Train the critic
-
-			# Actor update (policy function)
-			var old_probabilities: Array = actor.predict(state)
-			if check_for_nan(old_probabilities):
-				print("Invalid probabilities (NaN) from actor predict!")
-				return
-
-			# Create a one-hot encoded target for the actor with advantage
-			var action_targets: Array = []
-			for i in range(old_probabilities.size()):
-				if i == action:
-					action_targets.append(advantage)
+				var next_value: float
+				if use_target_network:
+					next_value = target_critic.predict(next_state)[0]
 				else:
-					action_targets.append(0.0)
+					next_value = critic.predict(next_state)[0]
 
-			# Calculate the entropy of the action distribution
-			if use_entropy:
-				var entropy: float = compute_entropy(old_probabilities)
-				var loss_with_entropy: Array = []
-				for j in range(action_targets.size()):
-					loss_with_entropy.append(action_targets[j] - entropy_beta * entropy)
-				action_targets = loss_with_entropy
+				if check_for_nan([value, next_value]):
+					print("Invalid values (NaN) from critic predict!")
+					return
 
-			if use_gradient_clipping:
-				# Train the actor on the full probability distribution with gradient clipping
-				actor.train(state, clip_gradients(action_targets))
-			else:
-				# Train the actor on the full probability distribution without gradient clipping
-				actor.train(state, action_targets)
+				var target: float = reward + (1.0 - float(done)) * gamma * next_value
+				var advantage: float = target - value
+				critic.train(state, [target])  # Train the critic
 
-		if use_learning_rate_scheduling:
-			# Optionally update learning rate
-			update_learning_rate(step)
+				# Actor update (policy function)
+				var old_probabilities: Array = actor.predict(state)
+				if check_for_nan(old_probabilities):
+					print("Invalid probabilities (NaN) from actor predict!")
+					return
 
-		# Update target network after every `target_network_update_steps`
-		if use_target_network and step % target_network_update_steps == 0:
-			update_target_network()
+				# Create a one-hot encoded target for the actor with advantage
+				var action_targets: Array = []
+				for i in range(old_probabilities.size()):
+					if i == action:
+						action_targets.append(advantage)
+					else:
+						action_targets.append(0.0)
+
+				# Calculate the entropy of the action distribution
+				if use_entropy:
+					var entropy: float = compute_entropy(old_probabilities)
+					var loss_with_entropy: Array = []
+					for j in range(action_targets.size()):
+						loss_with_entropy.append(action_targets[j] - entropy_beta * entropy)
+					action_targets = loss_with_entropy
+
+				if use_gradient_clipping:
+					# Train the actor on the full probability distribution with gradient clipping
+					actor.train(state, clip_gradients(action_targets))
+				else:
+					# Train the actor on the full probability distribution without gradient clipping
+					actor.train(state, action_targets)
+
+			if use_learning_rate_scheduling:
+				# Optionally update learning rate
+				update_learning_rate(step)
+
+			# Update target network after every `target_network_update_steps`
+			if use_target_network and step % target_network_update_steps == 0:
+				update_target_network()
 
 		# Compute accuracy or other performance metrics
 		current_accuracy = compute_accuracy()
@@ -197,6 +206,7 @@ func train():
 			adjust_learning_rate_based_on_accuracy()
 
 	#print("Training step completed.")
+
 
 func compute_accuracy() -> float:
 	# Dummy function to compute accuracy. Replace with actual computation.
@@ -211,13 +221,29 @@ func compute_accuracy() -> float:
 	return float(correct_predictions) / float(total_predictions)
 
 func adjust_learning_rate_based_on_accuracy():
-	if current_accuracy < accuracy_threshold and current_accuracy > previous_accuracy:
-		# Reduce learning rate if accuracy improvement slows down
-		actor.learning_rate = max(min_learning_rate, actor.learning_rate * decay_rate)
-		critic.learning_rate = max(min_learning_rate, critic.learning_rate * decay_rate)
+	if current_accuracy < accuracy_threshold:
+		if current_accuracy > previous_accuracy:
+			# If accuracy is improving but below the threshold, reduce the learning rate slightly
+			actor.learning_rate = max(min_learning_rate, actor.learning_rate * decay_rate)
+			critic.learning_rate = max(min_learning_rate, critic.learning_rate * decay_rate)
+			if use_target_network:
+				target_critic.learning_rate = max(min_learning_rate, target_critic.learning_rate * decay_rate)
+		elif current_accuracy < previous_accuracy:
+			# If accuracy is worsening, reduce the learning rate more aggressively
+			actor.learning_rate = max(min_learning_rate, actor.learning_rate * (decay_rate ** 2))
+			critic.learning_rate = max(min_learning_rate, critic.learning_rate * (decay_rate ** 2))
+			if use_target_network:
+				target_critic.learning_rate = max(min_learning_rate, target_critic.learning_rate * (decay_rate ** 2))
+	else:
+		# If accuracy meets or exceeds the threshold, slowly increase the learning rate to encourage further improvement
+		actor.learning_rate = min(initial_learning_rate, actor.learning_rate / decay_rate)
+		critic.learning_rate = min(initial_learning_rate, critic.learning_rate / decay_rate)
 		if use_target_network:
-			target_critic.learning_rate = max(min_learning_rate, target_critic.learning_rate * decay_rate)
+			target_critic.learning_rate = min(initial_learning_rate, target_critic.learning_rate / decay_rate)
+
+	# Update previous accuracy for the next iteration
 	previous_accuracy = current_accuracy
+
 
 func check_for_nan(array: Array) -> bool:
 	for value in array:

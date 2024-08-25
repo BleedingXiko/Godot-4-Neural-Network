@@ -10,13 +10,13 @@ var af = Activation.new()
 var ACTIVATIONS = af.get_functions()
 
 var actor_config = {
-	"learning_rate": 0.0001,
+	"learning_rate": 0.00001,
 	"use_l2_regularization": false,
 	"l2_regularization_strength": 0.001
 }
 
 var critic_config = {
-	"learning_rate": 0.0001,
+	"learning_rate": 0.00000001,
 	"use_l2_regularization": false,
 	"l2_regularization_strength": 0.01
 }
@@ -56,13 +56,13 @@ func _ready() -> void:
 	ppo.set_config(training_config)
 	# Actor network: 9 outputs corresponding to the 9 possible moves on the board
 	ppo.actor.add_layer(9)
-	ppo.actor.add_layer(6, ACTIVATIONS.RELU)  # Hidden layer
+	ppo.actor.add_layer(12, ACTIVATIONS.SWISH)  # Hidden layer
 	ppo.actor.add_layer(9, ACTIVATIONS.SIGMOID)  # Output layer (9 possible actions)
 
 	# Critic network: 1 output for value estimation
 	ppo.critic.add_layer(9)
-	ppo.critic.add_layer(5, ACTIVATIONS.RELU)  # Hidden layer
-	ppo.critic.add_layer(1, ACTIVATIONS.SIGMOID)  # Output layer for value prediction
+	ppo.critic.add_layer(12, ACTIVATIONS.RELU)  # Hidden layer
+	ppo.critic.add_layer(1, ACTIVATIONS.LINEAR)  # Output layer for value prediction
 
 	#print("PPO initialized successfully.")
 
@@ -79,7 +79,7 @@ func _ready() -> void:
 	draws = 0
 
 func train_networks():
-	for i in range(20):
+	for i in range(100):
 		init_board()
 		train_game()
 

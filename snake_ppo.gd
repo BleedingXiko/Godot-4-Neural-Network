@@ -1,6 +1,6 @@
 extends Node2D
 
-const GRID_SIZE = Vector2i(4, 4)  # The size of the grid (10x10)
+const GRID_SIZE = Vector2i(5, 5)  # The size of the grid (10x10)
 const EMPTY = 0
 const SNAKE_HEAD = 1
 const SNAKE_BODY = -1
@@ -20,13 +20,13 @@ var ACTIVATIONS = af.get_functions()
 
 # PPO configurations
 var actor_config = {
-	"learning_rate": 0.0001,
+	"learning_rate": 0.001,
 	"use_l2_regularization": false,
 	"l2_regularization_strength": 0.001
 }
 
 var critic_config = {
-	"learning_rate": 0.0001,
+	"learning_rate": 0.001,
 	"use_l2_regularization": false,
 	"l2_regularization_strength": 0.01
 }
@@ -34,22 +34,22 @@ var critic_config = {
 var training_config = {
 	"gamma": 0.95,
 	"epsilon_clip": 0.2,
-	"update_steps": 80,
-	"max_memory_size": 10000,
-	"batch_size": 64,
-	"lambda": 0.95,
-	"entropy_beta": 0.01,
+	"update_steps": 40,
+	"max_memory_size": 500,
+	"batch_size": 32,
+	"lambda": 0.90,
+	"entropy_beta": 0.03,
 	"initial_learning_rate": 0.0001,
 	"min_learning_rate": 0.00001,
-	"decay_rate": 0.75,
+	"decay_rate": 0.95,
 	"clip_value": 0.2,
 	"target_network_update_steps": 2000,  # Steps to update target network
 	"learning_rate_schedule_type": "accuracy_based",  # Type of learning rate scheduling ("constant", "exponential_decay", "linear_decay", "step_decay", "accuracy_based")
-	"accuracy_threshold": 0.95,  # Threshold for accuracy-based learning rate adjustment
+	"accuracy_threshold": 0.90,  # Threshold for accuracy-based learning rate adjustment
 	"use_gae": true,
 	"use_entropy": true,
 	"use_target_network": true,
-	"use_gradient_clipping": true,
+	"use_gradient_clipping": false,
 	"use_learning_rate_scheduling": true
 }
 
@@ -62,17 +62,18 @@ func _ready():
 	# Initialize PPO with the provided configurations
 	ppo = PPO.new(actor_config, critic_config)
 	ppo.set_config(training_config)
-	ppo.actor.add_layer(4 * 4)
-	ppo.actor.add_layer(23, ACTIVATIONS.RELU)
+	ppo.actor.add_layer(5 * 5)
+	ppo.actor.add_layer(43, ACTIVATIONS.RELU)
 	ppo.actor.add_layer(4, ACTIVATIONS.SIGMOID)  # Using SIGMOID activation for 4 possible actions (up, down, left, right)
 
-	ppo.critic.add_layer(4 * 4)
-	ppo.critic.add_layer(23, ACTIVATIONS.RELU)
+	ppo.critic.add_layer(5 * 5)
+	ppo.critic.add_layer(32, ACTIVATIONS.RELU)
+	ppo.critic.add_layer(42, ACTIVATIONS.RELU)
 	ppo.critic.add_layer(1, ACTIVATIONS.LINEAR)
 	
 	#ppo.load("res://ppo_snake.data")
 	# Train the agent
-	for i in range(100):  # Adjust the number of training episodes as needed
+	for i in range(250):  # Adjust the number of training episodes as needed
 		print("Training episode:", i + 1)
 		run_training_episode()
 
@@ -101,10 +102,20 @@ func place_snake():
 	grid[snake[0].x][snake[0].y] = SNAKE_HEAD
 
 func spawn_food():
-	var x = randi() % GRID_SIZE.x
-	var y = randi() % GRID_SIZE.y
-	food_position = Vector2i(x, y)
-	grid[food_position.x][food_position.y] = FOOD
+	var empty_positions: Array = []
+
+	# Collect all empty positions on the grid
+	for x in range(GRID_SIZE.x):
+		for y in range(GRID_SIZE.y):
+			if grid[x][y] == EMPTY:
+				empty_positions.append(Vector2i(x, y))
+
+	if empty_positions.size() > 0:
+		# Randomly select one of the empty positions for food
+		food_position = empty_positions[randi() % empty_positions.size()]
+		grid[food_position.x][food_position.y] = FOOD
+	else:
+		print("No empty position available for spawning food!")
 
 func move_snake():
 	if game_over:
@@ -156,6 +167,7 @@ func run_training_episode():
 		var action = ppo.get_action(state)
 		apply_action(action)
 		move_snake()
+		print_board()
 
 		var reward: float = 0.0
 
@@ -227,7 +239,7 @@ func visualize_gameplay():
 
 		print_board()
 
-		await get_tree().create_timer(0.5).timeout  # Slow down the game so you can watch
+		await get_tree().create_timer(0.3).timeout  # Slow down the game so you can watch
 
 		# Reset the game if it ends and keep playing
 		if game_over:
@@ -239,7 +251,7 @@ func visualize_gameplay():
 			print_board()
 
 func print_board():
-	print("Current Board:")
+	print(ppo.actor.learning_rate)
 	for y in range(GRID_SIZE.y):
 		var row = ""
 		for x in range(GRID_SIZE.x):

@@ -3,7 +3,7 @@ extends Node2D
 var nnas: NeuralNetworkAdvanced
 
 var network_config = {
-	"learning_rate": 0.0001,
+	"learning_rate": 0.000001,
 	"l2_regularization_strength": 0.001,
 	"use_l2_regularization": false,
 }
@@ -27,7 +27,7 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	if Input.is_action_pressed("predict"):
 		#nnas.load("./test.nn")
-		for i in range(30):
+		for i in range(100):
 			nnas.train([1.0, 2.0, 3.0], [6.0])
 			nnas.train([4.0, 5.0, 6.0], [15.0])
 			nnas.train([7.0, 8.0, 9.0], [24.0])

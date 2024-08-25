@@ -4,9 +4,3 @@
 
 [node name="Snake_Ppo" type="Node2D"]
 script = ExtResource("1_liqq4")
-
-[node name="Timer" type="Timer" parent="."]
-wait_time = 0.5
-autostart = true
-
-[connection signal="timeout" from="Timer" to="." method="_on_timer_timeout"]
