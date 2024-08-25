@@ -106,7 +106,7 @@ func sample_action(probabilities: Array) -> int:
 			return i
 	return probabilities.size() - 1
 
-func remember(state: Array, action: int, reward: float, next_state: Array, done: bool):
+func keep(state: Array, action: int, reward: float, next_state: Array, done: bool):
 	#print("Storing experience: State: ", state, " Action: ", action, " Reward: ", reward, " Next State: ", next_state, " Done: ", done)
 	if memory.size() >= max_memory_size:
 		memory.pop_front()  # Remove the oldest experience if memory exceeds limit
@@ -258,15 +258,13 @@ func save(path: String):
 	print("Saving actor and critic networks.")
 	actor.save(path + "_actor")
 	critic.save(path + "_critic")
-	if use_target_network:
-		target_critic.save(path + "_target_critic")
 
 func load(path: String):
 	print("Loading actor and critic networks.")
 	actor.load(path + "_actor")
 	critic.load(path + "_critic")
 	if use_target_network:
-		target_critic.load(path + "_target_critic")
+		update_target_network()
 
 func compute_entropy(probabilities: Array) -> float:
 	var entropy: float = 0.0

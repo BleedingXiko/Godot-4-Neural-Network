@@ -102,7 +102,7 @@ func train_game():
 			var next_state = board.duplicate()
 
 			# Store the experience with pre-action and post-action states
-			ppo.remember(state, action, current_reward, next_state, done)
+			ppo.keep(state, action, current_reward, next_state, done)
 
 			# Update previous reward for the current player
 			previous_reward = current_reward

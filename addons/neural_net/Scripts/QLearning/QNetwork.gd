@@ -117,16 +117,17 @@ func choose_action_softmax(q_values: Array) -> int:
 			return i
 	return probabilities.size() - 1
 
-func predict(current_states: Array, reward_of_previous_state: float, done: bool = false) -> int:
+
+func train(current_states: Array, reward_of_previous_state: float, done: bool = false) -> int:
 	var current_q_values = neural_network.predict(current_states)
 	
-	if is_learning and previous_state.size() != 0:
+	# Handle the learning and updating process
+	if previous_state.size() != 0:
 		if use_replay:
-			add_to_memory(previous_state, previous_action, reward_of_previous_state, current_states, done) # 'false' for 'done' flag; update as necessary
+			add_to_memory(previous_state, previous_action, reward_of_previous_state, current_states, done)
 			if replay_memory.size() >= batch_size:
 				var batch = sample_memory()
 				train_batch(batch)
-			
 		else:
 			var max_future_q: int
 			if use_target_network:
@@ -138,24 +139,12 @@ func predict(current_states: Array, reward_of_previous_state: float, done: bool 
 			target_q_values[previous_action] = target_q_value
 			neural_network.train(previous_state, target_q_values)
 
-	var action_to_take: int
-	if is_learning:
-		if exploration_strategy == "epsilon_greedy":
-			if randf() < exploration_probability:
-				action_to_take = randi() % current_q_values.size()
-			else:
-				action_to_take = current_q_values.find(current_q_values.max())
-			exploration_probability = max(min_exploration_probability, exploration_probability - exploration_decreasing_decay)
-			
-		elif exploration_strategy == "softmax":
-			action_to_take = choose_action_softmax(current_q_values)
-	else:
-		action_to_take = current_q_values.find(current_q_values.max())
-	if is_learning:
-		previous_state = current_states
-		previous_action = action_to_take
+	# Update previous state and action for the next step
+	previous_state = current_states
+	previous_action = choose_action(current_states)
 	
-	if steps_completed % update_target_every_steps == 0 and is_learning:
+	# Handle target network updates
+	if steps_completed % update_target_every_steps == 0:
 		update_target_network()
 
 	if steps_completed % decay_per_steps == 0:
@@ -166,13 +155,30 @@ func predict(current_states: Array, reward_of_previous_state: float, done: bool 
 			print("-----------------------------------------------------------------------------------------")
 	
 	steps_completed += 1
-	return action_to_take
+	return previous_action
 
+func choose_action(current_states: Array) -> int:
+	var current_q_values = neural_network.predict(current_states)
+	var action_to_take: int
+
+	if exploration_strategy == "epsilon_greedy":
+		if randf() < exploration_probability:
+			action_to_take = randi() % current_q_values.size()
+		else:
+			action_to_take = current_q_values.find(current_q_values.max())
+		exploration_probability = max(min_exploration_probability, exploration_probability - exploration_decreasing_decay)
+		
+	elif exploration_strategy == "softmax":
+		action_to_take = choose_action_softmax(current_q_values)
+	else:
+		action_to_take = current_q_values.find(current_q_values.max())
+
+	return action_to_take
 
 func save(path):
 	neural_network.save(path)
 
-func load(path, config: Dictionary = {"is_learning": false, "exploration_strategy": "softmax"}):
+func load(path, config: Dictionary = {"exploration_strategy": "softmax"}):
 	neural_network.load(path)
 	set_config(config)
 	update_target_network()

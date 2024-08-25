@@ -192,7 +192,7 @@ func run_training_episode():
 			reward -= 10
 
 		var next_state = get_state()
-		ppo.remember(state, action, reward, next_state, game_over)
+		ppo.keep(state, action, reward, next_state, game_over)
 		ppo.train()
 
 

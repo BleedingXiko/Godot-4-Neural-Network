@@ -1,6 +1,6 @@
 extends Node2D
 
-const GRID_SIZE = Vector2i(10, 10)  # The size of the grid (4x4)
+const GRID_SIZE = Vector2i(4, 4)  # The size of the grid (4x4)
 const EMPTY = 0
 const SNAKE_HEAD = 1
 const SNAKE_BODY = -1
@@ -19,7 +19,7 @@ var training_done: bool = false
 var dqn_config = {
 	"print_debug_info": false,
 	"exploration_probability": 1.0,
-	"exploration_decreasing_decay": 0.005,
+	"exploration_decreasing_decay": 0.01,
 	"min_exploration_probability": 0.05,
 	"exploration_strategy": "softmax",
 	"discounted_factor": 0.95,
@@ -42,18 +42,18 @@ func _ready():
 
 	# Initialize DQN with the provided configurations
 	dqn = QNetwork.new(dqn_config)
-	dqn.add_layer(10 * 10, dqn.neural_network.ACTIVATIONS.RELU)
-	dqn.add_layer(44, dqn.neural_network.ACTIVATIONS.ELU)
-	dqn.add_layer(62, dqn.neural_network.ACTIVATIONS.ELU)
+	dqn.add_layer(4 * 4)
+	dqn.add_layer(20, dqn.neural_network.ACTIVATIONS.ELU)
 	dqn.add_layer(4, dqn.neural_network.ACTIVATIONS.SIGMOID)  # 4 possible actions (up, down, left, right)
 	
 	# Uncomment the next line if you have a pre-trained model to load
 	#dqn.load("res://dqn_snake.data", dqn_config)
 
 	# Train the agent
-	for i in range(5000):  # Adjust the number of training episodes as needed
+	for i in range(100):  # Adjust the number of training episodes as needed
 		print("Training episode:", i + 1)
 		run_training_episode()
+		
 
 	training_done = true
 	print("Training complete!")
@@ -136,7 +136,7 @@ func run_training_episode():
 		var state = get_state()
 		
 		# Use DQN to predict the action to take
-		var action = dqn.predict(state, 0, false)  # Predict the action based on the current state
+		var action = dqn.choose_action(state)  # Predict the action based on the current state
 		
 		apply_action(action)
 		move_snake()
@@ -148,7 +148,8 @@ func run_training_episode():
 		var next_state = get_state()
 		
 		# Store the experience and train the DQN
-		dqn.predict(state, reward, game_over)
+		dqn.train(state, reward, game_over)
+
 
 		if game_over:
 			break
@@ -191,7 +192,7 @@ func visualize_gameplay():
 
 	while not game_over:
 		var state = get_state()
-		var action = dqn.predict(state, 0, false)
+		var action = dqn.choose_action(state)
 		apply_action(action)
 		move_snake()
 

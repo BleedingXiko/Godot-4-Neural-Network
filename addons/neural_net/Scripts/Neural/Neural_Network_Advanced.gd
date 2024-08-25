@@ -6,7 +6,7 @@ var af = Activation.new()
 var ACTIVATIONS = af.get_functions()
 
 
-var learning_rate: float = 0.1
+var learning_rate: float = 0.01
 var use_l2_regularization: bool = false
 var l2_regularization_strength: float = 0.001
 
@@ -15,11 +15,13 @@ var layer_structure = []
 var raycasts: Array[RayCast2D]
 
 func _init(config: Dictionary):
+	set_config(config)
+
+func set_config(config: Dictionary):
 	learning_rate = config.get("learning_rate", learning_rate)
 	use_l2_regularization = config.get("use_l2_regularization", use_l2_regularization)
 	l2_regularization_strength = config.get("l2_regularization_strength", l2_regularization_strength)
 	
-
 func add_layer(nodes: int, activation: Dictionary = ACTIVATIONS.SIGMOID):
 	
 	if layer_structure.size() != 0:

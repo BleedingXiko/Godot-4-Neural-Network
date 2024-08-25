@@ -30,7 +30,7 @@ func _ready():
 	randomize()
 	q_network = QNetwork.new(q_network_config)
 	q_network.add_layer(3)  # Input layer: 3 bits
-	q_network.add_layer(2, ACTIVATIONS.SWISH)  # Hidden layer
+	q_network.add_layer(5, ACTIVATIONS.SWISH)  # Hidden layer
 	q_network.add_layer(3, ACTIVATIONS.SIGMOID)  # Output layer: 3 possible actions (flip each bit)
 	$VisualizeNet.visualize(q_network.neural_network)
 	for i in range(5):
@@ -48,7 +48,7 @@ func train_network():
 	previous_reward = 0.0
 	
 	while not done:
-		var action = q_network.predict(current_state, previous_reward, done)
+		var action = q_network.choose_action(current_state)
 		var new_state = current_state.duplicate()
 		
 		# Perform the action (flip the chosen bit)
@@ -62,7 +62,7 @@ func train_network():
 			done = true
 			
 		# Update the Q-network with the new experience
-		q_network.predict(new_state, reward, done)
+		q_network.train(new_state, reward, done)
 		
 		# Update the current state
 		current_state = new_state
@@ -84,7 +84,7 @@ func play_binary_counter():
 	
 	while current_state != target_state:
 		print("Current state: %s" % str(current_state))
-		var action = q_network.predict(current_state, 0.0, false)
+		var action = q_network.choose_action(current_state)
 		current_state[action] = 1 - current_state[action]
 		print("Action taken: Flip bit %d" % action)
 		print("New state: %s" % str(current_state))

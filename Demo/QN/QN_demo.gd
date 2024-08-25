@@ -85,7 +85,8 @@ func print_grid():
 func _on_timer_timeout():
 	#print_grid()
 	current_state = grid
-	var action_to_do: int = qnet.predict(current_state, previous_reward)
+	var action_to_do: int = qnet.choose_action(current_state)
+	qnet.train(current_state, previous_reward, done)
 	if done:
 		reset()
 	
@@ -94,6 +95,7 @@ func _on_timer_timeout():
 	if is_out_bound(action_to_do):
 		previous_reward -= 1
 		done = true
+		
 	elif row * 6 + column in punish_states:
 		previous_reward -= 0.5
 		done = true

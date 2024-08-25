@@ -51,7 +51,7 @@ func _ready() -> void:
 	draws = 0
 
 func train_networks():
-	for i in range(50000):
+	for i in range(20000):
 		init_board()
 		train_game()
 
@@ -64,7 +64,7 @@ func train_game():
 		var state = board.duplicate()
 
 		# Predict action based on the current state and player
-		var action: int = qt_x.predict(state, previous_reward, done)
+		var action: int = qt_x.choose_action(state)
 
 		if update_board(player, action):
 			current_reward = determine_value_training(board, player)
@@ -82,7 +82,7 @@ func train_game():
 			player = switch_player(player)
 
 	# Ensure final state is processed
-	qt_x.predict(board, previous_reward, true)
+	qt_x.train(board, previous_reward, true)
 	update_win_counts(has_winner(board))
 
 func _input(event: InputEvent) -> void:
@@ -123,7 +123,7 @@ func play_against_ai():
 			input_timer.start()
 			await input_timer.timeout
 		else:
-			var action = qt_x.predict(board, 0, false)
+			var action = qt_x.choose_action(board)
 			if update_board(player, action):
 				print_board()
 				if check_end_game():
