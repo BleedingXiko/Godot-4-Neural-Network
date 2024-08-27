@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://0xpp5k1p2jtw"]
+
+[ext_resource type="Script" path="res://Demo/NWN/nwn_test.gd" id="1_aqjlp"]
+
+[node name="NWN_test" type="Node2D"]
+script = ExtResource("1_aqjlp")

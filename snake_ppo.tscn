@@ -1,4 +1,4 @@
-[gd_scene load_steps=2 format=3 uid="uid://crakkhueyte1h"]
+[gd_scene load_steps=2 format=3 uid="uid://ce7li5l8rxmnp"]
 
 [ext_resource type="Script" path="res://snake_ppo.gd" id="1_liqq4"]
 

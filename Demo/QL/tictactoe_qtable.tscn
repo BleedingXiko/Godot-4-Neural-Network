@@ -1,4 +1,4 @@
-[gd_scene load_steps=2 format=3 uid="uid://dbf6c5ulp1div"]
+[gd_scene load_steps=2 format=3 uid="uid://cj8j62kaph6ma"]
 
 [ext_resource type="Script" path="res://Demo/QL/tictactoe_qtable.gd" id="1_sjo1p"]
 

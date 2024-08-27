@@ -1,4 +1,4 @@
-[gd_scene load_steps=3 format=3 uid="uid://ni6hdt65a0yv"]
+[gd_scene load_steps=3 format=3 uid="uid://b18lu6cqki44y"]
 
 [ext_resource type="Script" path="res://bin_flip.gd" id="1_csgay"]
 [ext_resource type="PackedScene" uid="uid://c4hm7rksuae77" path="res://addons/neural_net/Scripts/Visual/VisualizeNet.tscn" id="2_wot2i"]

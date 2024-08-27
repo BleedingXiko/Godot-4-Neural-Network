@@ -1,4 +1,4 @@
-[gd_scene load_steps=3 format=3 uid="uid://8sm0qjft03nx"]
+[gd_scene load_steps=3 format=3 uid="uid://dhtbx3qnvo2jb"]
 
 [ext_resource type="Script" path="res://Demo/QN/tictactoe_qnet.gd" id="1_uscjw"]
 [ext_resource type="PackedScene" uid="uid://c4hm7rksuae77" path="res://addons/neural_net/Scripts/Visual/VisualizeNet.tscn" id="2_h020o"]

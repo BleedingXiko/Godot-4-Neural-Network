@@ -12,7 +12,7 @@ var direction: Vector2i = Vector2i(1, 0)  # Start moving right
 var food_position: Vector2i = Vector2i.ZERO
 var game_over: bool = false
 
-var dqn: QNetwork
+var dqn: DQN
 var training_done: bool = false
 
 # DQN configurations
@@ -33,6 +33,7 @@ var dqn_config = {
 	"learning_rate": 0.0001,
 	"l2_regularization_strength": 0.001,
 	"use_l2_regularization": false,
+	"use_nin": true,
 }
 
 func _ready():
@@ -41,10 +42,10 @@ func _ready():
 	spawn_food()
 
 	# Initialize DQN with the provided configurations
-	dqn = QNetwork.new(dqn_config)
-	dqn.add_layer(4 * 4)
-	dqn.add_layer(20, dqn.neural_network.ACTIVATIONS.ELU)
-	dqn.add_layer(4, dqn.neural_network.ACTIVATIONS.SIGMOID)  # 4 possible actions (up, down, left, right)
+	dqn = DQN.new(dqn_config)
+	dqn.add_nin(4, [], 4 * 4)
+	dqn.add_nin(6, [], 4)
+	dqn.add_master_network_layer(4, [20,12, 9])  # 4 possible actions (up, down, left, right)
 	
 	# Uncomment the next line if you have a pre-trained model to load
 	#dqn.load("res://dqn_snake.data", dqn_config)

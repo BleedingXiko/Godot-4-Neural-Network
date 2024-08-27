@@ -1,4 +1,4 @@
-[gd_scene load_steps=3 format=3 uid="uid://b6vvm1epn5eix"]
+[gd_scene load_steps=3 format=3 uid="uid://dbitbmqmecx6s"]
 
 [ext_resource type="Script" path="res://Demo/NNA/complementary_colors.gd" id="1_2fkeb"]
 [ext_resource type="PackedScene" uid="uid://c4hm7rksuae77" path="res://addons/neural_net/Scripts/Visual/VisualizeNet.tscn" id="1_5shkd"]

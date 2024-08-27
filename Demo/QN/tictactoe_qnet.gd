@@ -1,6 +1,6 @@
 extends Node2D
 
-var qt_x: QNetwork
+var qt_x: DQN
 var board = [0, 0, 0, 0, 0, 0, 0, 0, 0]
 var player = 1
 var waiting_for_input = false
@@ -35,10 +35,13 @@ var draws: int = 0
 @onready var input_timer: Timer = $Timer
 
 func _ready() -> void:
-	qt_x = QNetwork.new(q_network_config)
-	qt_x.add_layer(9)  # Input layer (implicitly)
-	qt_x.add_layer(16, ACTIVATIONS.RELU)  # Hidden layer with ELU activation
-	qt_x.add_layer(9, ACTIVATIONS.LINEAR)  # Output layer with no activation function (linear)
+	qt_x = DQN.new(q_network_config)
+	qt_x.add_dense(9)  # Input layer (implicitly)
+	qt_x.add_dense(13, ACTIVATIONS.ELU)  # Hidden layer with ELU activation
+	qt_x.add_dense(9, ACTIVATIONS.LINEAR)  # Output layer with no activation function (linear)
+	
+	#qt_x.add_nin(3, [0], 9)
+	#qt_x.add_master_network_layer(9, [6,3])
 	#qt_x.load("user://qnet_ttt.data", q_network_config)
 	train_networks()
 	#qt_x.save("user://qnet_ttt.data")
@@ -51,7 +54,7 @@ func _ready() -> void:
 	draws = 0
 
 func train_networks():
-	for i in range(20000):
+	for i in range(2000):
 		init_board()
 		train_game()
 
@@ -72,6 +75,7 @@ func train_game():
 
 			# Update previous reward for the current player
 			previous_reward = current_reward
+			qt_x.train(board, previous_reward, done)
 		else:
 			# Invalid move, punish player
 			current_reward = -0.5

@@ -86,7 +86,6 @@ func _on_timer_timeout():
 	#print_grid()
 	current_state = grid
 	var action_to_do: int = qnet.choose_action(current_state)
-	qnet.train(current_state, previous_reward, done)
 	if done:
 		reset()
 	
@@ -106,6 +105,7 @@ func _on_timer_timeout():
 	else:
 		previous_reward -= 0.05
 		
+	qnet.train(current_state, previous_reward, done)
 	update_grid(row, column, target)
 	$player.position = Vector2(96 * column + 16, 96 * (5 - row) + 16)  # Adjust for correct visual alignment
 	$lr.text = str(qnet.exploration_probability)

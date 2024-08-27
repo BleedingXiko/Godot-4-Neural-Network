@@ -1,6 +1,6 @@
 extends Node2D
 
-var q_network: QNetwork
+var q_network: DQN
 var current_state: Array = [0, 0, 0]  # Start with a 3-bit binary number [000]
 var target_state: Array = [1, 1, 1]  # The target is to reach [111]
 
@@ -28,11 +28,14 @@ func _ready():
 	# Initialize the QNetwork
 	seed(26)
 	randomize()
-	q_network = QNetwork.new(q_network_config)
-	q_network.add_layer(3)  # Input layer: 3 bits
-	q_network.add_layer(5, ACTIVATIONS.SWISH)  # Hidden layer
-	q_network.add_layer(3, ACTIVATIONS.SIGMOID)  # Output layer: 3 possible actions (flip each bit)
-	$VisualizeNet.visualize(q_network.neural_network)
+	q_network = DQN.new(q_network_config)
+	#q_network.add_dense(3)  # Input layer: 3 bits
+	#q_network.add_dense(5, ACTIVATIONS.SWISH)  # Hidden layer
+	#q_network.add_dense(3, ACTIVATIONS.SIGMOID)  # Output layer: 3 possible actions (flip each bit)
+	
+	q_network.add_nin(2, [0], 3)
+	q_network.add_master_network_layer(3, [6,3])
+	#$VisualizeNet.visualize(q_network.neural_network)
 	for i in range(5):
 		train_network()
 	play_binary_counter()
@@ -67,7 +70,7 @@ func train_network():
 		# Update the current state
 		current_state = new_state
 		
-		$VisualizeNet2.visualize(q_network.neural_network)
+		#$VisualizeNet2.visualize(q_network.neural_network)
 
 func calculate_reward(state: Array) -> float:
 	# Reward is based on how close the current state is to the target state

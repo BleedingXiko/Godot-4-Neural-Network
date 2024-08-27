@@ -50,6 +50,8 @@ func predict(input_array: Array) -> Array:
 		inputs = map
 	return Matrix.to_array(inputs)
 
+
+
 func train(input_array: Array, target_array: Array):
 	var inputs: Matrix = Matrix.from_array(input_array)
 	var targets: Matrix = Matrix.from_array(target_array)
@@ -116,7 +118,7 @@ func train(input_array: Array, target_array: Array):
 				weight_delta = Matrix.subtract(weight_delta, l2_penalty)
 			network[layer_index].weights = Matrix.add(layer.weights, weight_delta)
 			network[layer_index].bias = Matrix.add(layer.bias, hidden_gradient)
-			
+
 
 func copy() -> NeuralNetworkAdvanced:
 	# Copy other necessary properties if there are any
