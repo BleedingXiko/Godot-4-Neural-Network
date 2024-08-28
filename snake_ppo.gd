@@ -1,12 +1,16 @@
 extends Node2D
 
-const GRID_SIZE = Vector2i(5, 5)  # The size of the grid (10x10)
+const GRID_SIZE = Vector2i(5, 5)  # The size of the grid
 const EMPTY = 0
-const SNAKE_HEAD = 1
-const SNAKE_BODY = -1
-const FOOD = 2
+const SNAKE_HEAD = 1.0
+const SNAKE_BODY = 0.75
+const FOOD = 0.5
+const PREV_SNAKE_HEAD = -1.0
+const PREV_SNAKE_BODY = -0.75
+const PREV_FOOD = -0.5
 
 var grid: Array = []
+var prev_grid: Array = []
 var snake: Array = []
 var direction: Vector2i = Vector2i(1, 0)  # Start moving right
 var food_position: Vector2i = Vector2i.ZERO
@@ -16,7 +20,6 @@ var ppo: PPO
 var training_done: bool = false
 var af = Activation.new()
 var ACTIVATIONS = af.get_functions()
-
 
 # PPO configurations
 var actor_config = {
@@ -44,7 +47,7 @@ var training_config = {
 	"decay_rate": 0.95,
 	"clip_value": 0.2,
 	"target_network_update_steps": 2000,  # Steps to update target network
-	"learning_rate_schedule_type": "accuracy_based",  # Type of learning rate scheduling ("constant", "exponential_decay", "linear_decay", "step_decay", "accuracy_based")
+	"learning_rate_schedule_type": "constant",  # Type of learning rate scheduling
 	"accuracy_threshold": 0.90,  # Threshold for accuracy-based learning rate adjustment
 	"use_gae": true,
 	"use_entropy": true,
@@ -62,13 +65,13 @@ func _ready():
 	# Initialize PPO with the provided configurations
 	ppo = PPO.new(actor_config, critic_config)
 	ppo.set_config(training_config)
-	ppo.actor.add_layer(5 * 5)
-	ppo.actor.add_layer(43, ACTIVATIONS.RELU)
+	ppo.actor.add_layer(5 * 5 * 2)  # Adjust for current + previous state
+	ppo.actor.add_layer(43, ACTIVATIONS.TANH)
 	ppo.actor.add_layer(4, ACTIVATIONS.SIGMOID)  # Using SIGMOID activation for 4 possible actions (up, down, left, right)
 
-	ppo.critic.add_layer(5 * 5)
-	ppo.critic.add_layer(32, ACTIVATIONS.RELU)
-	ppo.critic.add_layer(42, ACTIVATIONS.RELU)
+	ppo.critic.add_layer(5 * 5 * 2)  # Adjust for current + previous state
+	ppo.critic.add_layer(32, ACTIVATIONS.TANH)
+	ppo.critic.add_layer(42, ACTIVATIONS.TANH)
 	ppo.critic.add_layer(1, ACTIVATIONS.LINEAR)
 	
 	#ppo.load("res://ppo_snake.data")
@@ -86,11 +89,15 @@ func _ready():
 
 func initialize_grid():
 	grid = []
+	prev_grid = []
 	for x in range(GRID_SIZE.x):
 		var row: Array = []
+		var prev_row: Array = []
 		for y in range(GRID_SIZE.y):
 			row.append(EMPTY)
+			prev_row.append(EMPTY)
 		grid.append(row)
+		prev_grid.append(prev_row)
 
 func place_snake():
 	   # Calculate the center of the grid
@@ -120,6 +127,18 @@ func spawn_food():
 func move_snake():
 	if game_over:
 		return
+
+	# Save the current grid as the previous grid before moving the snake
+	prev_grid = grid.duplicate(true)
+	for x in range(GRID_SIZE.x):
+		for y in range(GRID_SIZE.y):
+			# Encode previous frame information
+			if prev_grid[x][y] == SNAKE_HEAD:
+				prev_grid[x][y] = PREV_SNAKE_HEAD
+			elif prev_grid[x][y] == SNAKE_BODY:
+				prev_grid[x][y] = PREV_SNAKE_BODY
+			elif prev_grid[x][y] == FOOD:
+				prev_grid[x][y] = PREV_FOOD
 
 	var new_head = snake[0] + direction
 
@@ -219,7 +238,9 @@ func get_state() -> Array:
 	var state: Array = []
 	for y in range(GRID_SIZE.y):
 		for x in range(GRID_SIZE.x):
+			# Append current and previous grid states
 			state.append(grid[x][y])
+			state.append(prev_grid[x][y])
 	return state
 
 func visualize_gameplay():
@@ -250,20 +271,35 @@ func visualize_gameplay():
 
 			print_board()
 
+
 func print_board():
-	print(ppo.actor.learning_rate)
+	print("Current State | Previous State")
 	for y in range(GRID_SIZE.y):
-		var row = ""
+		var current_row = ""
+		var prev_row = ""
 		for x in range(GRID_SIZE.x):
+			# Current state
 			match grid[x][y]:
 				EMPTY:
-					row += ". "
+					current_row += ". "
 				SNAKE_HEAD:
 					if Vector2i(x, y) == snake[0]:
-						row += "H "  # Mark the current head with 'H'
+						current_row += "H "  # Mark the current head with 'H'
 				SNAKE_BODY:
-						row += "S "  # Mark the rest of the snake's body with 'S'
+					current_row += "S "  # Mark the rest of the snake's body with 'S'
 				FOOD:
-					row += "F "
-		print(row)
+					current_row += "F "
+			
+			# Previous state
+			match prev_grid[x][y]:
+				EMPTY:
+					prev_row += ". "
+				PREV_SNAKE_HEAD:
+					prev_row += "h "  # Mark the previous head with 'h'
+				PREV_SNAKE_BODY:
+					prev_row += "s "  # Mark the previous snake's body with 's'
+				PREV_FOOD:
+					prev_row += "f "
+
+		print(current_row + " | " + prev_row)
 	print("\n")

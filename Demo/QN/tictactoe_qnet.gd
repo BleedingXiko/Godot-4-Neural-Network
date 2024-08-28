@@ -23,9 +23,10 @@ var q_network_config = {
 	"update_target_every_steps": 1000,
 	"memory_capacity": 2048,
 	"batch_size": 64,
-	"learning_rate": 0.0001,
+	"learning_rate": 0.001,
 	"l2_regularization_strength": 0.001,
 	"use_l2_regularization": false,
+	"use_nin": true,
 }
 
 var x_wins: int = 0
@@ -36,13 +37,11 @@ var draws: int = 0
 
 func _ready() -> void:
 	qt_x = DQN.new(q_network_config)
-	qt_x.add_dense(9)  # Input layer (implicitly)
-	qt_x.add_dense(13, ACTIVATIONS.ELU)  # Hidden layer with ELU activation
-	qt_x.add_dense(9, ACTIVATIONS.LINEAR)  # Output layer with no activation function (linear)
+	qt_x.add_layer(9)  # Input layer (implicitly)
+	qt_x.add_layer(13, ACTIVATIONS.ELU)  # Hidden layer with ELU activation
+	qt_x.add_layer(9, ACTIVATIONS.LINEAR)  # Output layer with no activation function (linear)
 	
-	#qt_x.add_nin(3, [0], 9)
-	#qt_x.add_master_network_layer(9, [6,3])
-	#qt_x.load("user://qnet_ttt.data", q_network_config)
+	#qt_x.load("usec://qnet_ttt.data", q_network_config)
 	train_networks()
 	#qt_x.save("user://qnet_ttt.data")
 	#qt_x.load("user://qnet_ttt.data")

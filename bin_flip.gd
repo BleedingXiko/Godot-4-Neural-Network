@@ -22,6 +22,7 @@ var q_network_config = {
 	"learning_rate": 0.01,
 	"l2_regularization_strength": 0.001,
 	"use_l2_regularization": false,
+	"use_nin": true,
 }
 
 func _ready():

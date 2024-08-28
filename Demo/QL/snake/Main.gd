@@ -1,12 +1,17 @@
 extends Node2D
 
 const GRID_SIZE = Vector2i(4, 4)  # The size of the grid (4x4)
-const EMPTY = 0
-const SNAKE_HEAD = 1
-const SNAKE_BODY = -1
-const FOOD = 2
+const EMPTY = 0.0
+const SNAKE_HEAD = 1.0
+const SNAKE_BODY = 0.75
+const FOOD = 0.5
+const PREV_SNAKE_HEAD = -1
+const PREV_SNAKE_BODY = -0.75
+const PREV_FOOD = -0.5
+
 
 var grid: Array = []
+var prev_grid: Array = []  # Add previous grid state
 var snake: Array = []
 var direction: Vector2i = Vector2i(1, 0)  # Start moving right
 var food_position: Vector2i = Vector2i.ZERO
@@ -14,6 +19,9 @@ var game_over: bool = false
 
 var dqn: DQN
 var training_done: bool = false
+
+var af = Activation.new()
+var ACTIVATIONS = af.get_functions()
 
 # DQN configurations
 var dqn_config = {
@@ -28,13 +36,16 @@ var dqn_config = {
 	"is_learning": true,
 	"use_target_network": true,
 	"update_target_every_steps": 1000,
-	"memory_capacity": 2048,
-	"batch_size": 128,
-	"learning_rate": 0.0001,
-	"l2_regularization_strength": 0.001,
-	"use_l2_regularization": false,
-	"use_nin": true,
+	"memory_capacity": 4096,
+	"batch_size": 1024,
+	"learning_rate": 0.00001,
+	"l2_regularization_strength": 0.000001,
+	"use_l2_regularization": true,
 }
+
+func _input(event: InputEvent) -> void:
+	if event.is_action_pressed("predict"):
+		dqn.save("res://dqn_snake.data")
 
 func _ready():
 	initialize_grid()
@@ -43,18 +54,18 @@ func _ready():
 
 	# Initialize DQN with the provided configurations
 	dqn = DQN.new(dqn_config)
-	dqn.add_nin(4, [], 4 * 4)
-	dqn.add_nin(6, [], 4)
-	dqn.add_master_network_layer(4, [20,12, 9])  # 4 possible actions (up, down, left, right)
+	dqn.add_layer(4 * 4 * 2)  # Adjust for time series input (current + previous)
+	dqn.add_layer(18, ACTIVATIONS.TANH)
+	dqn.add_layer(10, ACTIVATIONS.TANH)
+	dqn.add_layer(4, ACTIVATIONS.SIGMOID)  # 4 possible actions (up, down, left, right)
 	
 	# Uncomment the next line if you have a pre-trained model to load
-	#dqn.load("res://dqn_snake.data", dqn_config)
+	dqn.load("res://dqn_snake.data", dqn_config)
 
 	# Train the agent
-	for i in range(100):  # Adjust the number of training episodes as needed
+	for i in range(1000):  # Adjust the number of training episodes as needed
 		print("Training episode:", i + 1)
 		run_training_episode()
-		
 
 	training_done = true
 	print("Training complete!")
@@ -66,11 +77,15 @@ func _ready():
 
 func initialize_grid():
 	grid = []
+	prev_grid = []  # Initialize previous grid
 	for x in range(GRID_SIZE.x):
 		var row: Array = []
+		var prev_row: Array = []
 		for y in range(GRID_SIZE.y):
 			row.append(EMPTY)
+			prev_row.append(EMPTY)
 		grid.append(row)
+		prev_grid.append(prev_row)
 
 func place_snake():
 	# Calculate the center of the grid
@@ -101,12 +116,24 @@ func move_snake():
 	if game_over:
 		return
 
+	# Save the current grid as the previous grid before moving the snake
+	prev_grid = grid.duplicate(true)
+	for x in range(GRID_SIZE.x):
+		for y in range(GRID_SIZE.y):
+			# Encode previous frame information
+			if prev_grid[x][y] == SNAKE_HEAD:
+				prev_grid[x][y] = PREV_SNAKE_HEAD
+			elif prev_grid[x][y] == SNAKE_BODY:
+				prev_grid[x][y] = PREV_SNAKE_BODY
+			elif prev_grid[x][y] == FOOD:
+				prev_grid[x][y] = PREV_FOOD
+
 	var new_head = snake[0] + direction
 
 	# Check if the new head is out of bounds or hits the body
 	if new_head.x < 0 or new_head.x >= GRID_SIZE.x or new_head.y < 0 or new_head.y >= GRID_SIZE.y or grid[new_head.x][new_head.y] == SNAKE_BODY:
 		game_over = true
-		print("Game Over")
+		#print("Game Over")
 		return
 
 	# Check if the snake has eaten the food
@@ -146,11 +173,8 @@ func run_training_episode():
 		# Calculate the reward after moving the snake
 		var reward = 10 if snake[0] == food_position else -10 if game_over else 0.1
 		
-		var next_state = get_state()
-		
 		# Store the experience and train the DQN
 		dqn.train(state, reward, game_over)
-
 
 		if game_over:
 			break
@@ -172,13 +196,13 @@ func apply_action(action: int):
 	else:
 		direction = proposed_direction
 
-	#print("Direction updated to:", direction)
-
 func get_state() -> Array:
 	var state: Array = []
 	for y in range(GRID_SIZE.y):
 		for x in range(GRID_SIZE.x):
+			# Append current and previous grid states
 			state.append(grid[x][y])
+			state.append(prev_grid[x][y])
 	return state
 
 
@@ -211,18 +235,33 @@ func visualize_gameplay():
 			print_board()
 
 func print_board():
+	print("Current State | Previous State")
 	for y in range(GRID_SIZE.y):
-		var row = ""
+		var current_row = ""
+		var prev_row = ""
 		for x in range(GRID_SIZE.x):
+			# Current state
 			match grid[x][y]:
 				EMPTY:
-					row += ". "
+					current_row += ". "
 				SNAKE_HEAD:
 					if Vector2i(x, y) == snake[0]:
-						row += "H "  # Mark the current head with 'H'
+						current_row += "H "  # Mark the current head with 'H'
 				SNAKE_BODY:
-						row += "S "  # Mark the rest of the snake's body with 'S'
+					current_row += "S "  # Mark the rest of the snake's body with 'S'
 				FOOD:
-					row += "F "
-		print(row)
+					current_row += "F "
+			
+			# Previous state
+			match prev_grid[x][y]:
+				EMPTY:
+					prev_row += ". "
+				PREV_SNAKE_HEAD:
+					prev_row += "h "  # Mark the previous head with 'h'
+				PREV_SNAKE_BODY:
+					prev_row += "s "  # Mark the previous snake's body with 's'
+				PREV_FOOD:
+					prev_row += "f "
+
+		print(current_row + " | " + prev_row)
 	print("\n")

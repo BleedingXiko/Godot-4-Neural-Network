@@ -1,10 +1,11 @@
 class_name DQN
 
-var neural_network: Object  # Can be either NeuralNetworkAdvanced or NeuralNetworkInNetwork
+var neural_network: NeuralNetworkAdvanced
 
 # Hyper-parameters
+# Optional target network
 var use_target_network: bool = true
-var target_neural_network: Object  # Can be either NeuralNetworkAdvanced or NeuralNetworkInNetwork
+var target_neural_network: NeuralNetworkAdvanced
 var update_target_every_steps: int = 1000
 
 var exploration_probability: float = 1.0
@@ -37,19 +38,12 @@ var previous_action: int
 func _init(config: Dictionary) -> void:
 	# Configuring hyper-parameters from the config dictionary
 	set_config(config)
-	
-	# Initialize the neural network based on the configuration
-	if config.has("use_nin") and config["use_nin"]:
-		neural_network = NeuralNetworkInNetwork.new(config)
-	else:
-		neural_network = NeuralNetworkAdvanced.new(config)
+	# Initialize the neural network with fixed architecture
+	neural_network = NeuralNetworkAdvanced.new(config)
 	
 	# Initialize the target network if required
 	if use_target_network:
-		if config.has("use_nin") and config["use_nin"]:
-			target_neural_network = NeuralNetworkInNetwork.new(config)
-		else:
-			target_neural_network = neural_network.copy()
+		target_neural_network = neural_network.copy()
 
 func set_config(config: Dictionary) -> void:
 	exploration_probability = config.get("exploration_probability", exploration_probability)
@@ -69,37 +63,10 @@ func set_config(config: Dictionary) -> void:
 	decay_per_steps = config.get("decay_per_steps", decay_per_steps)
 	print_debug_info = config.get("print_debug_info", print_debug_info)
 	exploration_strategy = config.get("exploration_strategy", exploration_strategy)
+	
 
-func add_dense(nodes: int, function: Dictionary = neural_network.ACTIVATIONS.SIGMOID, input_shape: int = 0):
-	# Add a dense (regular) layer to the neural network
-	if neural_network is NeuralNetworkAdvanced:
-		neural_network.add_layer(nodes, function)
-	else:
-		print("Cannot add a dense layer to a Network-in-Network setup directly. Use add_master_network_layer.")
-
-func add_nin(nodes: int, sub_hidden_layers: Array = [1], input_shape: int = 0):
-	# Add a NIN layer to the neural network
-	if neural_network is NeuralNetworkInNetwork:
-		var previous_nodes: int
-		
-		if neural_network.sub_networks.size() > 0:
-			# Get the number of sub-networks in the last NIN layer (this acts as the input size for the next layer)
-			previous_nodes = neural_network.sub_networks[-1].size()
-		else:
-			# If there are no sub-networks, use the provided input_shape as the input size for the first layer
-			previous_nodes = input_shape
-
-		# Add the NIN layer with the correct input size
-		neural_network.add_nin_layer(nodes, previous_nodes, sub_hidden_layers)
-	else:
-		print("Cannot add a NIN layer to a dense network setup.")
-
-func add_master_network_layer(output_size: int, master_hidden_layers: Array = [], activation: Dictionary = neural_network.ACTIVATIONS.SIGMOID):
-	# Add the master network for NIN
-	if neural_network is NeuralNetworkInNetwork:
-		neural_network.add_master_network_layer(output_size, master_hidden_layers, activation)
-	else:
-		print("Master network layer is only applicable to NIN setups.")
+func add_layer(nodes: int, function: Dictionary = neural_network.ACTIVATIONS.SIGMOID):
+	neural_network.add_layer(nodes, function)
 
 func add_to_memory(state, action, reward, next_state, done):
 	if replay_memory.size() >= memory_capacity:
@@ -149,6 +116,7 @@ func choose_action_softmax(q_values: Array) -> int:
 		if randf() < cumulative_prob:
 			return i
 	return probabilities.size() - 1
+
 
 func train(current_states: Array, reward_of_previous_state: float, done: bool = false) -> int:
 	var current_q_values = neural_network.predict(current_states)

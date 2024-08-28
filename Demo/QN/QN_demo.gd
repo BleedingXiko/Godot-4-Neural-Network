@@ -1,6 +1,6 @@
 extends Node2D
 
-var qnet: QNetwork
+var qnet: DQN
 var af = Activation.new()
 var ACTIVATIONS = af.get_functions()
 
@@ -52,7 +52,7 @@ var initial_grid := [
 var grid := []
 
 func _ready() -> void:
-	qnet = QNetwork.new(q_network_config)
+	qnet = DQN.new(q_network_config)
 	qnet.add_layer(initial_grid.size())
 	qnet.add_layer(8, ACTIVATIONS.SIGMOID)
 	qnet.add_layer(10, ACTIVATIONS.SIGMOID)
