@@ -109,13 +109,15 @@ func softmax(q_values: Array) -> Array:
 	return probabilities
 
 func choose_action_softmax(q_values: Array) -> int:
-	var probabilities = softmax(q_values)
-	var cumulative_prob = 0.0
-	for i in range(probabilities.size()):
-		cumulative_prob += probabilities[i]
-		if randf() < cumulative_prob:
-			return i
-	return probabilities.size() - 1
+    var probabilities = softmax(q_values)
+    var cumulative_prob = 0.0
+    var rand_value = randf()
+    for i in range(probabilities.size()):
+        cumulative_prob += probabilities[i]
+        if rand_value < cumulative_prob:
+            return i
+    # Fallback: choose a random action if the cumulative probability never exceeds rand_value
+    return randi() % q_values.size()
 
 
 func train(current_states: Array, reward_of_previous_state: float, done: bool = false) -> int:
