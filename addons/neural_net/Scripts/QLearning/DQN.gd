@@ -20,6 +20,7 @@ var print_debug_info: bool = false
 
 # Exploration strategy: "epsilon_greedy" or "softmax"
 var exploration_strategy: String = "epsilon_greedy"
+var sampling_strategy: String = "random"
 
 # Replay memory
 var memory_capacity: int = 300
@@ -63,6 +64,7 @@ func set_config(config: Dictionary) -> void:
 	decay_per_steps = config.get("decay_per_steps", decay_per_steps)
 	print_debug_info = config.get("print_debug_info", print_debug_info)
 	exploration_strategy = config.get("exploration_strategy", exploration_strategy)
+	sampling_strategy = config.get("sampling_strategy", sampling_strategy)
 	
 
 func add_layer(nodes: int, function: Dictionary = neural_network.ACTIVATIONS.SIGMOID):
@@ -73,28 +75,134 @@ func add_to_memory(state, action, reward, next_state, done):
 		replay_memory.pop_front()
 	replay_memory.append({"state": state, "action": action, "reward": reward, "next_state": next_state, "done": done})
 
-func sample_memory():
-	var batch = []
-	for i in range(min(batch_size, replay_memory.size())):
-		batch.append(replay_memory.pick_random())
-	return batch
 
 func update_target_network():
 	if use_target_network:
 		print("updated Target Network")
 		target_neural_network = neural_network.copy()
 
-func train_batch(batch):
+# Random sampling (default)
+func sample_random_memory() -> Array:
+	var batch = []
+	for i in range(min(batch_size, replay_memory.size())):
+		batch.append(replay_memory.pick_random())
+	return batch
+
+# Sequential sampling
+func sample_sequential_memory() -> Array:
+	var batch = []
+	var max_start_index = replay_memory.size() - batch_size
+	
+	# Randomly select a starting point within a valid range
+	var start_index = randi() % max(1, max_start_index + 1)
+
+	for i in range(batch_size):
+		if start_index + i < replay_memory.size():
+			batch.append(replay_memory[start_index + i])
+	return batch
+
+
+
+
+# Priority sampling
+func sample_priority_memory() -> Array:
+	var batch = []
+	var priorities = []
+	var sum_priorities = 0.0
+
+	# Calculate priorities (e.g., based on absolute TD error)
+	for experience in replay_memory:
+		var max_future_q = neural_network.predict(experience["next_state"]).max()
+		var td_error = abs(experience["reward"] + discounted_factor * max_future_q - neural_network.predict(experience["state"])[experience["action"]])
+		priorities.append(td_error)
+		sum_priorities += td_error
+
+	# Sample based on priorities
+	for n in range(batch_size):
+		var rand_value = randf() * sum_priorities
+		for i in range(priorities.size()):
+			rand_value -= priorities[i]
+			if rand_value <= 0:
+				batch.append(replay_memory[i])
+				break
+
+	return batch
+
+# Time series sampling
+
+
+func sample_time_series_memory(sequence_length: int) -> Array:
+	var batch = []
+	var max_start_index = replay_memory.size() - sequence_length
+
+	for i in range(min(batch_size, max_start_index)):
+		var start_index = randi() % max_start_index  # Random starting point
+		var sequence = {"state": [], "action": [], "reward": [], "next_state": [], "done": []}
+
+		for j in range(sequence_length):
+			var experience = replay_memory[start_index + j]
+			sequence["state"].append(experience["state"])
+			sequence["action"].append(experience["action"])
+			sequence["reward"].append(experience["reward"])
+			sequence["next_state"].append(experience["next_state"])
+			sequence["done"].append(experience["done"])
+		
+		batch.append(sequence)
+	return batch
+
+
+# Generalized sample memory function
+func sample_replay_memory(sampling_strategy: String) -> Array:
+	match sampling_strategy:
+		"random":
+			return sample_random_memory()  # Existing random sampling
+		"sequential":
+			return sample_sequential_memory()
+		"priority":
+			return sample_priority_memory()
+		"time_series":
+			return sample_time_series_memory(5)  # Example sequence length
+		_:
+			return sample_random_memory()  # Default to random sampling
+
+
+
+func train_batch(batch: Array):
 	for experience in batch:
-		var max_future_q: float
-		if use_target_network:
-			max_future_q = target_neural_network.predict(experience["next_state"]).max()
+		# Determine if the batch is time series by checking if the "state" is an array of arrays
+		if typeof(experience["state"]) == TYPE_ARRAY and experience["state"].size() > 0 and typeof(experience["state"][0]) == TYPE_ARRAY:
+			# Handle time series data
+			var sequence_length = experience["state"].size()
+			for t in range(sequence_length):
+				var current_state = experience["state"][t]
+				var next_state = experience["next_state"][t]
+				var reward = experience["reward"][t]
+				var action = experience["action"][t]
+				var done = experience["done"][t]
+				
+				var max_future_q: float
+				if use_target_network:
+					max_future_q = target_neural_network.predict(next_state).max()
+				else:
+					max_future_q = neural_network.predict(next_state).max()
+				
+				var target_q_value = reward + discounted_factor * max_future_q if not done else reward
+				var target_q_values = neural_network.predict(current_state)
+				target_q_values[action] = target_q_value
+				neural_network.train(current_state, target_q_values)
 		else:
-			max_future_q = neural_network.predict(experience["next_state"]).max()
-		var target_q_value = experience["reward"] + discounted_factor * max_future_q if not experience["done"] else experience["reward"]
-		var target_q_values = neural_network.predict(experience["state"])
-		target_q_values[experience["action"]] = target_q_value
-		neural_network.train(experience["state"], target_q_values)
+			# Handle regular (non-time series) data
+			var max_future_q: float
+			if use_target_network:
+				max_future_q = target_neural_network.predict(experience["next_state"]).max()
+			else:
+				max_future_q = neural_network.predict(experience["next_state"]).max()
+			
+			var target_q_value = experience["reward"] + discounted_factor * max_future_q if not experience["done"] else experience["reward"]
+			var target_q_values = neural_network.predict(experience["state"])
+			target_q_values[experience["action"]] = target_q_value
+			neural_network.train(experience["state"], target_q_values)
+
 
 func softmax(q_values: Array) -> Array:
 	var exp_values = []
@@ -109,15 +217,15 @@ func softmax(q_values: Array) -> Array:
 	return probabilities
 
 func choose_action_softmax(q_values: Array) -> int:
-    var probabilities = softmax(q_values)
-    var cumulative_prob = 0.0
-    var rand_value = randf()
-    for i in range(probabilities.size()):
-        cumulative_prob += probabilities[i]
-        if rand_value < cumulative_prob:
-            return i
-    # Fallback: choose a random action if the cumulative probability never exceeds rand_value
-    return randi() % q_values.size()
+	var probabilities = softmax(q_values)
+	var cumulative_prob = 0.0
+	var rand_value = randf()
+	for i in range(probabilities.size()):
+		cumulative_prob += probabilities[i]
+		if rand_value < cumulative_prob:
+			return i
+	# Fallback: choose a random action if the cumulative probability never exceeds rand_value
+	return randi() % q_values.size()
 
 
 func train(current_states: Array, reward_of_previous_state: float, done: bool = false) -> int:
@@ -129,10 +237,10 @@ func train(current_states: Array, reward_of_previous_state: float, done: bool = 
 		if use_replay:
 			add_to_memory(previous_state, previous_action, reward_of_previous_state, current_states, done)
 			if replay_memory.size() >= batch_size:
-				var batch = sample_memory()
+				var batch = sample_replay_memory(sampling_strategy)
 				train_batch(batch)
 		else:
-			var max_future_q: int
+			var max_future_q: float
 			if use_target_network:
 				max_future_q = target_neural_network.predict(current_states).max()
 			else:

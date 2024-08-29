@@ -34,7 +34,7 @@ func _ready():
 	#q_network.add_dense(5, ACTIVATIONS.SWISH)  # Hidden layer
 	#q_network.add_dense(3, ACTIVATIONS.SIGMOID)  # Output layer: 3 possible actions (flip each bit)
 	
-	q_network.add_nin(2, [0], 3)
+	q_network.add_layer(2, [0], 3)
 	q_network.add_master_network_layer(3, [6,3])
 	#$VisualizeNet.visualize(q_network.neural_network)
 	for i in range(5):

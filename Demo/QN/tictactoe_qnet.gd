@@ -15,18 +15,17 @@ var q_network_config = {
 	"exploration_decreasing_decay": 0.005,
 	"min_exploration_probability": 0.05,
 	"exploration_strategy": "softmax",
-	"discounted_factor": 1,
+	"discounted_factor": 0.92,
 	"decay_per_steps": 250,
 	"use_replay": false,
 	"is_learning": true,
 	"use_target_network": true,
-	"update_target_every_steps": 1000,
+	"update_target_every_steps": 500,
 	"memory_capacity": 2048,
-	"batch_size": 64,
-	"learning_rate": 0.001,
-	"l2_regularization_strength": 0.001,
+	"batch_size": 128,
+	"learning_rate": 0.0001,
+	"l2_regularization_strength": 0.0001,
 	"use_l2_regularization": false,
-	"use_nin": true,
 }
 
 var x_wins: int = 0
@@ -38,12 +37,12 @@ var draws: int = 0
 func _ready() -> void:
 	qt_x = DQN.new(q_network_config)
 	qt_x.add_layer(9)  # Input layer (implicitly)
-	qt_x.add_layer(13, ACTIVATIONS.ELU)  # Hidden layer with ELU activation
-	qt_x.add_layer(9, ACTIVATIONS.LINEAR)  # Output layer with no activation function (linear)
+	qt_x.add_layer(6, ACTIVATIONS.SWISH)  # Hidden layer with ELU activation
+	qt_x.add_layer(9, ACTIVATIONS.SIGMOID)  # Output layer with no activation function (linear)
 	
-	#qt_x.load("usec://qnet_ttt.data", q_network_config)
+	#qt_x.load("user://qnet_ttt.data", q_network_config)
 	train_networks()
-	#qt_x.save("user://qnet_ttt.data")
+	qt_x.save("user://qnet_ttt.data")
 	#qt_x.load("user://qnet_ttt.data")
 
 	print("Training complete. Ready to play!")
@@ -53,7 +52,7 @@ func _ready() -> void:
 	draws = 0
 
 func train_networks():
-	for i in range(2000):
+	for i in range(10000):
 		init_board()
 		train_game()
 

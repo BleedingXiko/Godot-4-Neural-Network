@@ -16,6 +16,7 @@ var snake: Array = []
 var direction: Vector2i = Vector2i(1, 0)  # Start moving right
 var food_position: Vector2i = Vector2i.ZERO
 var game_over: bool = false
+var previous_action: int = -1  # Initialize with an invalid action
 
 var dqn: DQN
 var training_done: bool = false
@@ -36,11 +37,12 @@ var dqn_config = {
 	"is_learning": true,
 	"use_target_network": true,
 	"update_target_every_steps": 1000,
-	"memory_capacity": 4096,
-	"batch_size": 1024,
-	"learning_rate": 0.00001,
-	"l2_regularization_strength": 0.000001,
+	"memory_capacity": 2048,
+	"batch_size": 512,
+	"learning_rate": 0.00005,
+	"l2_regularization_strength": 0.00001,
 	"use_l2_regularization": true,
+	"sampling_strategy": "sequential",
 }
 
 func _input(event: InputEvent) -> void:
@@ -54,16 +56,16 @@ func _ready():
 
 	# Initialize DQN with the provided configurations
 	dqn = DQN.new(dqn_config)
-	dqn.add_layer(4 * 4 * 2)  # Adjust for time series input (current + previous)
+	dqn.add_layer(33)  # Adjust for time series input (current + previous)
 	dqn.add_layer(18, ACTIVATIONS.TANH)
 	dqn.add_layer(10, ACTIVATIONS.TANH)
 	dqn.add_layer(4, ACTIVATIONS.SIGMOID)  # 4 possible actions (up, down, left, right)
 	
 	# Uncomment the next line if you have a pre-trained model to load
-	dqn.load("res://dqn_snake.data", dqn_config)
+	#dqn.load("res://dqn_snake.data", dqn_config)
 
 	# Train the agent
-	for i in range(1000):  # Adjust the number of training episodes as needed
+	for i in range(100):  # Adjust the number of training episodes as needed
 		print("Training episode:", i + 1)
 		run_training_episode()
 
@@ -86,6 +88,7 @@ func initialize_grid():
 			prev_row.append(EMPTY)
 		grid.append(row)
 		prev_grid.append(prev_row)
+	previous_action = -1
 
 func place_snake():
 	# Calculate the center of the grid
@@ -160,27 +163,31 @@ func run_training_episode():
 	place_snake()
 	spawn_food()
 	game_over = false  # Ensure game_over is reset
+	
 	while not game_over:
 		var state = get_state()
-		
+
 		# Use DQN to predict the action to take
 		var action = dqn.choose_action(state)  # Predict the action based on the current state
 		
-		apply_action(action)
+		apply_action(action)  # Store the action taken as an integer
+		
 		move_snake()
-		print_board()
+		#print_board()
 
 		# Calculate the reward after moving the snake
-		var reward = 10 if snake[0] == food_position else -10 if game_over else 0.1
-		
+		var reward = 10 if snake[0] == food_position else -20 if game_over else 0.01
+
 		# Store the experience and train the DQN
 		dqn.train(state, reward, game_over)
 
 		if game_over:
 			break
 
+
 func apply_action(action: int):
 	var proposed_direction: Vector2i
+	previous_action = action
 
 	match action:
 		0: proposed_direction = Vector2i(1, 0)  # Right
@@ -198,12 +205,22 @@ func apply_action(action: int):
 
 func get_state() -> Array:
 	var state: Array = []
+	
+	# Append previous grid state
 	for y in range(GRID_SIZE.y):
 		for x in range(GRID_SIZE.x):
-			# Append current and previous grid states
-			state.append(grid[x][y])
 			state.append(prev_grid[x][y])
+
+	# Append the action taken as a one-hot vector
+	state.append(previous_action)
+
+	# Append current grid state
+	for y in range(GRID_SIZE.y):
+		for x in range(GRID_SIZE.x):
+			state.append(grid[x][y])
+	
 	return state
+
 
 
 func visualize_gameplay():
@@ -235,7 +252,7 @@ func visualize_gameplay():
 			print_board()
 
 func print_board():
-	print("Current State | Previous State")
+	print("Current State | Previous State | Action Taken: %d" % previous_action)
 	for y in range(GRID_SIZE.y):
 		var current_row = ""
 		var prev_row = ""
