@@ -5,10 +5,12 @@ var network: Array
 var af = Activation.new()
 var ACTIVATIONS = af.get_functions()
 
+var save_path: String = "res://nn.best.data"
+
 var learning_rate: float = 0.01
 var use_l2_regularization: bool = false
 var l2_regularization_strength: float = 0.001
-var use_adam_optimizer: bool = false
+var use_adam_optimizer: bool = false  # Controls whether Adam optimizer is used
 var beta1: float = 0.9
 var beta2: float = 0.999
 var epsilon: float = 1e-7
@@ -22,6 +24,22 @@ var momentums: Array = []
 var velocities: Array = []
 var t: int = 0
 
+# Early Stopping Parameters
+var early_stopping: bool = true
+var has_stopped: bool = false
+var minimum_epochs: int = 100  # Minimum number of epochs before early stopping can trigger
+var patience: int = 50  # Increased patience for early stopping
+var improvement_threshold: float = 0.005  # Relative improvement threshold
+
+var best_loss: float = INF
+var epochs_without_improvement: int = 0
+
+var loss_history: Array = []
+var smoothing_window: int = 10  # Number of epochs to average over
+var check_frequency: int = 5  # Frequency of checking early stopping condition
+var steps_completed: int = 0  # Tracks the number of steps/epochs completed
+
+
 func _init(config: Dictionary):
 	set_config(config)
 
@@ -33,6 +51,13 @@ func set_config(config: Dictionary):
 	beta1 = config.get("beta1", beta1)
 	beta2 = config.get("beta2", beta2)
 	epsilon = config.get("epsilon", epsilon)
+	early_stopping = config.get("early_stopping", early_stopping)
+	patience = config.get("patience", patience)
+	save_path = config.get("save_path", save_path)
+	smoothing_window = config.get("smoothing_window", smoothing_window)
+	check_frequency = config.get("check_frequency", check_frequency)
+	minimum_epochs = config.get("minimum_epochs", minimum_epochs)  # Add minimum_epochs to the config
+	improvement_threshold = config.get("improvement_threshold", improvement_threshold)  # Add relative improvement threshold to the config
 
 func add_layer(nodes: int, activation: Dictionary = ACTIVATIONS.SIGMOID):
 	if layer_structure.size() != 0:
@@ -43,36 +68,51 @@ func add_layer(nodes: int, activation: Dictionary = ACTIVATIONS.SIGMOID):
 		bias.init(nodes, 1)
 		weights.rand()
 		bias.rand()
-		
-		var momentum_weights: Matrix = Matrix.new()
-		momentum_weights.init(nodes, layer_structure[-1])  # Initializes with zeros
-		var momentum_bias: Matrix = Matrix.new()
-		momentum_bias.init(nodes, 1)  # Initializes with zeros
-		
-		var velocity_weights: Matrix = Matrix.new()
-		velocity_weights.init(nodes, layer_structure[-1])  # Initializes with zeros
-		var velocity_bias: Matrix = Matrix.new()
-		velocity_bias.init(nodes, 1)  # Initializes with zeros
-
-		var momentum: Dictionary = {
-			"weights": momentum_weights,
-			"bias": momentum_bias
-		}
-		var velocity: Dictionary = {
-			"weights": velocity_weights,
-			"bias": velocity_bias
-		}
-		
-		momentums.append(momentum)
-		velocities.append(velocity)
 
 		var layer_data: Dictionary = {
 			"weights": weights,
 			"bias": bias,
 			"activation": activation
 		}
+
+		# Initialize momentum and velocity for Adam optimizer only if enabled
+		if use_adam_optimizer:
+			var momentum_weights: Matrix = Matrix.new()
+			momentum_weights.init(nodes, layer_structure[-1])  # Initializes with zeros
+			var momentum_bias: Matrix = Matrix.new()
+			momentum_bias.init(nodes, 1)  # Initializes with zeros
+			
+			var velocity_weights: Matrix = Matrix.new()
+			velocity_weights.init(nodes, layer_structure[-1])  # Initializes with zeros
+			var velocity_bias: Matrix = Matrix.new()
+			velocity_bias.init(nodes, 1)  # Initializes with zeros
+
+			var momentum: Dictionary = {
+				"weights": momentum_weights,
+				"bias": momentum_bias
+			}
+			var velocity: Dictionary = {
+				"weights": velocity_weights,
+				"bias": velocity_bias
+			}
+			
+			momentums.append(momentum)
+			velocities.append(velocity)
+
 		network.push_back(layer_data)
 	layer_structure.append(nodes)
+
+func update_loss_history(current_loss: float):
+	loss_history.append(current_loss)
+	if loss_history.size() > smoothing_window:
+		loss_history.remove_at(0)
+
+func get_smoothed_loss() -> float:
+	var smoothed_loss: float = 0.0
+	for loss in loss_history:
+		smoothed_loss += loss
+	return smoothed_loss / loss_history.size()
+
 
 func predict(input_array: Array) -> Array:
 	var inputs: Matrix = Matrix.from_array(input_array)
@@ -83,7 +123,11 @@ func predict(input_array: Array) -> Array:
 		inputs = map
 	return Matrix.to_array(inputs)
 
-func train(input_array: Array, target_array: Array):
+
+func train(input_array: Array, target_array: Array) -> bool:
+	if has_stopped:
+		return false
+
 	var inputs: Matrix = Matrix.from_array(input_array)
 	var targets: Matrix = Matrix.from_array(target_array)
 
@@ -195,6 +239,53 @@ func train(input_array: Array, target_array: Array):
 			
 			network[layer_index].weights = Matrix.add(layer.weights, weight_delta)
 			network[layer_index].bias = Matrix.add(layer.bias, hidden_gradient)
+
+	# After calculating the raw loss
+	var loss: float = calculate_loss(targets, outputs[-1])
+
+	# Add the loss to the history
+	loss_history.append(loss)
+
+	# Calculate the smoothed loss using moving average
+	var smoothed_loss: float = calculate_moving_average(loss_history, smoothing_window)
+
+# Early Stopping Logic using smoothed loss
+	if early_stopping and steps_completed >= minimum_epochs:
+		# Check if the smoothed loss is an improvement over the best recorded loss
+		if best_loss == INF or (best_loss - smoothed_loss) / abs(best_loss) > improvement_threshold:
+			best_loss = smoothed_loss
+			epochs_without_improvement = 0
+			self.save(save_path)
+			print("Model saved at epoch:", steps_completed, "with smoothed loss:", smoothed_loss)
+		else:
+			epochs_without_improvement += 1
+			print("No significant improvement. Epochs without improvement:", epochs_without_improvement)
+
+		if epochs_without_improvement >= patience:
+			has_stopped = true
+			print("Early stopping triggered. Restoring best model saved with loss:", best_loss)
+			self.load(save_path)  # Restore the best model state
+ # Restore the best model state
+
+	steps_completed += 1
+	return not has_stopped
+
+
+
+func calculate_loss(targets: Matrix, predictions: Matrix) -> float:
+	var error: Matrix = Matrix.subtract(targets, predictions)
+	var loss: float = 0.0
+	for i in range(error.get_rows()):
+		for j in range(error.get_cols()):
+			loss += pow(error.get_at(i, j), 2)
+	return loss / error.get_rows()
+
+func calculate_moving_average(values: Array, window_size: int) -> float:
+	var moving_sum: float = 0.0
+	for i in range(max(0, values.size() - window_size), values.size()):
+		moving_sum += values[i]
+	return moving_sum / min(values.size(), window_size)
+
 
 func copy() -> NeuralNetworkAdvanced:
 	# Copy other necessary properties if there are any

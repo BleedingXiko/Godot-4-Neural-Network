@@ -12,8 +12,17 @@ var config = {
 	"use_adam_optimizer": true,
 	"beta1": 0.9,
 	"beta2": 0.999,
-	"epsilon": 1e-7
+	"epsilon": 1e-7,
+	"early_stopping": true,  # Enable or disable early stopping
+	"patience": 10,          # Number of epochs with no improvement after which training will be stopped
+	"save_path": "res://earlystoptestcolo.data",  # Path to save the best model
+	"smoothing_window": 5,  # Number of epochs to average for loss smoothing
+	"check_frequency": 10,    # Frequency of checking early stopping condition
+	"minimum_epochs": 1000,   # Minimum epochs before early stopping can trigger
+	"improvement_threshold": 0.00005  # Minimum relative improvement required to reset patience
 }
+
+
 
 
 var activation_functions = [
@@ -28,14 +37,14 @@ func _ready() -> void:
 	randomize()
 	seed(randi())
 	nnas = NeuralNetworkAdvanced.new(config)
-
+	
 	# Input layer with 3 neurons (for RGB values)
 	nnas.add_layer(3)
 
 	# Randomly choose the number of hidden layers (between 1 and 3)
 	var num_hidden_layers = randi_range(1, 3)
 
-	nnas.add_layer(8, nnas.ACTIVATIONS.LINEAR)
+	nnas.add_layer(6, nnas.ACTIVATIONS.LINEAR)
 	#for i in range(num_hidden_layers):
 		## Randomly choose the number of neurons for this layer (between 1 and 10)
 		#var num_neurons = randi_range(3, 6)
@@ -47,6 +56,7 @@ func _ready() -> void:
 
 	# Output layer with 3 neurons (for RGB values)
 	nnas.add_layer(3, nnas.ACTIVATIONS.LINEAR)
+	nnas.load(nnas.save_path)
 	$VisualizeNet.visualize(nnas)
 	$VisualizeNet2.visualize(nnas)
 

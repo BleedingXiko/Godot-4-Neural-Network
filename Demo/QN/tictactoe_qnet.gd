@@ -49,7 +49,7 @@ func _ready() -> void:
 	#qt_x.load("user://qnet_ttt.data", q_network_config)
 	train_networks()
 	qt_x.save("user://qnet_ttt.data")
-	#qt_x.load("user://qnet_ttt.data")
+	qt_x.load("user://qnet_ttt.data")
 
 	print("Training complete. Ready to play!")
 	play_against_ai()

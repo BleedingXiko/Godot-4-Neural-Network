@@ -39,19 +39,22 @@ var dqn_config = {
 	"update_target_every_steps": 500,
 	"memory_capacity": 2048,
 	"batch_size": 256,
-	"learning_rate": 0.0001,
-	"l2_regularization_strength": 0.000001,
+	"learning_rate": 0.01,
 	"use_l2_regularization": true,
-	"sampling_strategy": "sequential",
+	"l2_regularization_strength": 0.1,
 	"use_adam_optimizer": true,
 	"beta1": 0.9,
 	"beta2": 0.999,
-	"epsilon": 1e-7
+	"epsilon": 1e-7,
+	"early_stopping": true,  # Enable or disable early stopping
+	"patience": 10,          # Number of epochs with no improvement after which training will be stopped
+	"save_path": "res://dqn_snake.data",  # Path to save the best model
+	"smoothing_window": 5,  # Number of epochs to average for loss smoothing
+	"check_frequency": 10,    # Frequency of checking early stopping condition
+	"minimum_epochs": 200,   # Minimum epochs before early stopping can trigger
+	"improvement_threshold": 0.00005  # Minimum relative improvement required to reset patience
 }
 
-func _input(event: InputEvent) -> void:
-	if event.is_action_pressed("predict"):
-		dqn.save("res://ddqn_snake.data")
 
 func _ready():
 	initialize_grid()
@@ -66,7 +69,7 @@ func _ready():
 	dqn.add_layer(4, ACTIVATIONS.LINEAR)  # 4 possible actions (up, down, left, right)
 	
 	# Uncomment the next line if you have a pre-trained model to load
-	dqn.load("res://dqn_snake.data", dqn_config)
+	#dqn.load(dqn.neural_network.save_path, dqn_config)
 
 	# Train the agent
 	for i in range(3000):  # Adjust the number of training episodes as needed
@@ -76,7 +79,7 @@ func _ready():
 	training_done = true
 	print("Training complete!")
 	
-	dqn.save("res://ddqn_snake.data")
+	dqn.save("res://dqn_snake.data")
 
 	# Now, visualize the trained agent playing the game by printing the board
 	visualize_gameplay()

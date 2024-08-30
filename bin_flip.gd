@@ -1,6 +1,6 @@
 extends Node2D
 
-var q_network: DQN
+var q_network: DDQN
 var current_state: Array = [0, 0, 0]  # Start with a 3-bit binary number [000]
 var target_state: Array = [1, 1, 1]  # The target is to reach [111]
 
@@ -26,20 +26,27 @@ var q_network_config = {
 	"use_adam_optimizer": true,
 	"beta1": 0.9,
 	"beta2": 0.999,
-	"epsilon": 1e-7
+	"epsilon": 1e-7,
+	"early_stopping": true,  # Enable or disable early stopping
+	"patience": 30,          # Number of epochs with no improvement after which training will be stopped
+	"save_path": "res://earlystoptestbinflip.data",  # Path to save the best model
+	"smoothing_window": 10,  # Number of epochs to average for loss smoothing
+	"check_frequency": 50,    # Frequency of checking early stopping condition
+	"minimum_epochs": 1000,   # Minimum epochs before early stopping can trigger
+	"improvement_threshold": 0.005  # Minimum relative improvement required to reset patience
 }
 
 func _ready():
 	# Initialize the QNetwork
 	seed(26)
 	randomize()
-	q_network = DQN.new(q_network_config)
+	q_network = DDQN.new(q_network_config)
 	q_network.add_layer(3)  # Input layer: 3 bits
 	q_network.add_layer(5, ACTIVATIONS.SWISH)  # Hidden layer
 	q_network.add_layer(3, ACTIVATIONS.SIGMOID)  # Output layer: 3 possible actions (flip each bit)
-
+	#q_network.load(q_network.neural_network.save_path)
 	$VisualizeNet.visualize(q_network.neural_network)
-	for i in range(5):
+	for i in range(50):
 		train_network()
 	play_binary_counter()
 
