@@ -1,13 +1,13 @@
 extends Node2D
 
 const GRID_SIZE = Vector2i(4, 4)  # The size of the grid (4x4)
-const EMPTY = 0.0
-const SNAKE_HEAD = 1.0
-const SNAKE_BODY = 0.75
-const FOOD = 0.5
-const PREV_SNAKE_HEAD = -1
-const PREV_SNAKE_BODY = -0.75
-const PREV_FOOD = -0.5
+const EMPTY = 0.05
+const SNAKE_HEAD = 0.9
+const SNAKE_BODY = 0.7
+const FOOD = 0.3
+const PREV_SNAKE_HEAD = -0.9
+const PREV_SNAKE_BODY = -0.7
+const PREV_FOOD = -0.3
 
 
 var grid: Array = []
@@ -28,7 +28,7 @@ var ACTIVATIONS = af.get_functions()
 var dqn_config = {
 	"print_debug_info": false,
 	"exploration_probability": 1.0,
-	"exploration_decreasing_decay": 0.01,
+	"exploration_decreasing_decay": 0.0001,
 	"min_exploration_probability": 0.05,
 	"exploration_strategy": "softmax",
 	"discounted_factor": 0.95,
@@ -36,18 +36,22 @@ var dqn_config = {
 	"use_replay": true,
 	"is_learning": true,
 	"use_target_network": true,
-	"update_target_every_steps": 1000,
+	"update_target_every_steps": 500,
 	"memory_capacity": 2048,
-	"batch_size": 512,
-	"learning_rate": 0.00005,
-	"l2_regularization_strength": 0.00001,
+	"batch_size": 256,
+	"learning_rate": 0.0001,
+	"l2_regularization_strength": 0.000001,
 	"use_l2_regularization": true,
 	"sampling_strategy": "sequential",
+	"use_adam_optimizer": true,
+	"beta1": 0.9,
+	"beta2": 0.999,
+	"epsilon": 1e-7
 }
 
 func _input(event: InputEvent) -> void:
 	if event.is_action_pressed("predict"):
-		dqn.save("res://dqn_snake.data")
+		dqn.save("res://ddqn_snake.data")
 
 func _ready():
 	initialize_grid()
@@ -57,22 +61,22 @@ func _ready():
 	# Initialize DQN with the provided configurations
 	dqn = DQN.new(dqn_config)
 	dqn.add_layer(33)  # Adjust for time series input (current + previous)
-	dqn.add_layer(18, ACTIVATIONS.TANH)
-	dqn.add_layer(10, ACTIVATIONS.TANH)
-	dqn.add_layer(4, ACTIVATIONS.SIGMOID)  # 4 possible actions (up, down, left, right)
+	dqn.add_layer(28, ACTIVATIONS.TANH)
+	dqn.add_layer(16, ACTIVATIONS.TANH)
+	dqn.add_layer(4, ACTIVATIONS.LINEAR)  # 4 possible actions (up, down, left, right)
 	
 	# Uncomment the next line if you have a pre-trained model to load
-	#dqn.load("res://dqn_snake.data", dqn_config)
+	dqn.load("res://dqn_snake.data", dqn_config)
 
 	# Train the agent
-	for i in range(100):  # Adjust the number of training episodes as needed
+	for i in range(3000):  # Adjust the number of training episodes as needed
 		print("Training episode:", i + 1)
 		run_training_episode()
 
 	training_done = true
 	print("Training complete!")
 	
-	dqn.save("res://dqn_snake.data")
+	dqn.save("res://ddqn_snake.data")
 
 	# Now, visualize the trained agent playing the game by printing the board
 	visualize_gameplay()
@@ -240,8 +244,14 @@ func visualize_gameplay():
 
 		print_board()
 
-		await get_tree().create_timer(0.5).timeout  # Slow down the game so you can watch
+		
+				# Calculate the reward after moving the snake
+		var reward = 10 if snake[0] == food_position else -20 if game_over else 0.01
 
+		# Store the experience and train the DQN
+		dqn.train(state, reward, game_over)
+		await get_tree().create_timer(0.5).timeout  # Slow down the game so you can watch
+		
 		# Reset the game if it ends and keep playing
 		if game_over:
 			game_over = false

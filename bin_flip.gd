@@ -12,6 +12,7 @@ var q_network_config = {
 	"exploration_decreasing_decay": 0.01,
 	"min_exploration_probability": 0.1,
 	"exploration_strategy": "epsilon_greedy",
+	"sampling_strategy": "sequential",
 	"discounted_factor": 0.9,
 	"decay_per_steps": 100,
 	"use_replay": true,
@@ -22,7 +23,10 @@ var q_network_config = {
 	"learning_rate": 0.01,
 	"l2_regularization_strength": 0.001,
 	"use_l2_regularization": false,
-	"use_nin": true,
+	"use_adam_optimizer": true,
+	"beta1": 0.9,
+	"beta2": 0.999,
+	"epsilon": 1e-7
 }
 
 func _ready():
@@ -30,13 +34,11 @@ func _ready():
 	seed(26)
 	randomize()
 	q_network = DQN.new(q_network_config)
-	#q_network.add_dense(3)  # Input layer: 3 bits
-	#q_network.add_dense(5, ACTIVATIONS.SWISH)  # Hidden layer
-	#q_network.add_dense(3, ACTIVATIONS.SIGMOID)  # Output layer: 3 possible actions (flip each bit)
-	
-	q_network.add_layer(2, [0], 3)
-	q_network.add_master_network_layer(3, [6,3])
-	#$VisualizeNet.visualize(q_network.neural_network)
+	q_network.add_layer(3)  # Input layer: 3 bits
+	q_network.add_layer(5, ACTIVATIONS.SWISH)  # Hidden layer
+	q_network.add_layer(3, ACTIVATIONS.SIGMOID)  # Output layer: 3 possible actions (flip each bit)
+
+	$VisualizeNet.visualize(q_network.neural_network)
 	for i in range(5):
 		train_network()
 	play_binary_counter()
@@ -71,7 +73,7 @@ func train_network():
 		# Update the current state
 		current_state = new_state
 		
-		#$VisualizeNet2.visualize(q_network.neural_network)
+		$VisualizeNet2.visualize(q_network.neural_network)
 
 func calculate_reward(state: Array) -> float:
 	# Reward is based on how close the current state is to the target state

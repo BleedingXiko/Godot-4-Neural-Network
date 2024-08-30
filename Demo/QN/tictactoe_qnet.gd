@@ -15,6 +15,7 @@ var q_network_config = {
 	"exploration_decreasing_decay": 0.005,
 	"min_exploration_probability": 0.05,
 	"exploration_strategy": "softmax",
+	"sampling_strategy": "sequential",
 	"discounted_factor": 0.92,
 	"decay_per_steps": 250,
 	"use_replay": false,
@@ -23,9 +24,13 @@ var q_network_config = {
 	"update_target_every_steps": 500,
 	"memory_capacity": 2048,
 	"batch_size": 128,
-	"learning_rate": 0.0001,
-	"l2_regularization_strength": 0.0001,
-	"use_l2_regularization": false,
+	"learning_rate": 0.000005,
+	"l2_regularization_strength": 0.001,
+	"use_l2_regularization": true,
+	"use_adam_optimizer": true,
+	"beta1": 0.9,
+	"beta2": 0.999,
+	"epsilon": 1e-7
 }
 
 var x_wins: int = 0
@@ -37,7 +42,8 @@ var draws: int = 0
 func _ready() -> void:
 	qt_x = DQN.new(q_network_config)
 	qt_x.add_layer(9)  # Input layer (implicitly)
-	qt_x.add_layer(6, ACTIVATIONS.SWISH)  # Hidden layer with ELU activation
+	qt_x.add_layer(6, ACTIVATIONS.TANH)
+	qt_x.add_layer(6, ACTIVATIONS.TANH)  # Hidden layer with ELU activation
 	qt_x.add_layer(9, ACTIVATIONS.SIGMOID)  # Output layer with no activation function (linear)
 	
 	#qt_x.load("user://qnet_ttt.data", q_network_config)
@@ -52,7 +58,7 @@ func _ready() -> void:
 	draws = 0
 
 func train_networks():
-	for i in range(10000):
+	for i in range(1000):
 		init_board()
 		train_game()
 

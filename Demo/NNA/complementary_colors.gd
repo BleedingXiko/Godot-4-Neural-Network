@@ -5,11 +5,16 @@ var nnas: NeuralNetworkAdvanced
 @onready var input: ColorRect = $input1
 @onready var output: ColorRect = $output
 
-var network_config = {
+var config = {
 	"learning_rate": 0.01,
-	"l2_regularization_strength": 0.00001,
 	"use_l2_regularization": false,
+	"l2_regularization_strength": 0.001,
+	"use_adam_optimizer": true,
+	"beta1": 0.9,
+	"beta2": 0.999,
+	"epsilon": 1e-7
 }
+
 
 var activation_functions = [
 	"SIGMOID",
@@ -22,7 +27,7 @@ var activation_functions = [
 func _ready() -> void:
 	randomize()
 	seed(randi())
-	nnas = NeuralNetworkAdvanced.new(network_config)
+	nnas = NeuralNetworkAdvanced.new(config)
 
 	# Input layer with 3 neurons (for RGB values)
 	nnas.add_layer(3)
@@ -30,7 +35,7 @@ func _ready() -> void:
 	# Randomly choose the number of hidden layers (between 1 and 3)
 	var num_hidden_layers = randi_range(1, 3)
 
-	nnas.add_layer(6, nnas.ACTIVATIONS.LINEAR)
+	nnas.add_layer(8, nnas.ACTIVATIONS.LINEAR)
 	#for i in range(num_hidden_layers):
 		## Randomly choose the number of neurons for this layer (between 1 and 10)
 		#var num_neurons = randi_range(3, 6)
@@ -65,7 +70,7 @@ func start_training() -> void:
 	output.color = Color(prediction[0], prediction[1], prediction[2])
 
 	# Train the network
-	for i in range(10):
+	for i in range(5):
 		nnas.train(normalized_input, normalized_output)
 	
 	# After training, visualize the network
