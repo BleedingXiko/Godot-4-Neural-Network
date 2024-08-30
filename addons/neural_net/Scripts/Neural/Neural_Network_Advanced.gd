@@ -24,6 +24,9 @@ var momentums: Array = []
 var velocities: Array = []
 var t: int = 0
 
+var use_gradient_clipping: bool = true  # Enable or disable gradient clipping
+var gradient_clip_value: float = 1.0    # The maximum absolute value for the gradients
+
 # Early Stopping Parameters
 var early_stopping: bool = true
 var has_stopped: bool = false
@@ -58,6 +61,9 @@ func set_config(config: Dictionary):
 	check_frequency = config.get("check_frequency", check_frequency)
 	minimum_epochs = config.get("minimum_epochs", minimum_epochs)  # Add minimum_epochs to the config
 	improvement_threshold = config.get("improvement_threshold", improvement_threshold)  # Add relative improvement threshold to the config
+	# Gradient Clipping
+	use_gradient_clipping = config.get("use_gradient_clipping", use_gradient_clipping)
+	gradient_clip_value = config.get("gradient_clip_value", gradient_clip_value)
 
 func add_layer(nodes: int, activation: Dictionary = ACTIVATIONS.SIGMOID):
 	if layer_structure.size() != 0:
@@ -164,7 +170,10 @@ func train(input_array: Array, target_array: Array) -> bool:
 				weight_delta = Matrix.dot_product(gradients, Matrix.transpose(inputs))
 			else:
 				weight_delta = Matrix.dot_product(gradients, Matrix.transpose(outputs[layer_index - 1]))
-			
+				  # Apply gradient clipping
+			if use_gradient_clipping:
+				gradients = clip_gradients(gradients)
+				weight_delta = clip_gradients(weight_delta)
 			if use_adam_optimizer:
 				# Adam optimizer update
 				t += 1
@@ -209,6 +218,11 @@ func train(input_array: Array, target_array: Array) -> bool:
 			else:
 				inputs_t = Matrix.transpose(inputs)
 			var weight_delta = Matrix.dot_product(hidden_gradient, inputs_t)
+			
+			# Apply gradient clipping
+			if use_gradient_clipping:
+				hidden_gradient = clip_gradients(hidden_gradient)
+				weight_delta = clip_gradients(weight_delta)
 			
 			if use_adam_optimizer:
 				# Adam optimizer update
@@ -270,6 +284,17 @@ func train(input_array: Array, target_array: Array) -> bool:
 	steps_completed += 1
 	return not has_stopped
 
+
+func clip_gradients(gradients: Matrix) -> Matrix:
+	var clipped_gradients: Matrix = Matrix.new()
+	clipped_gradients.init(gradients.get_rows(), gradients.get_cols())
+	
+	for i in range(gradients.get_rows()):
+		for j in range(gradients.get_cols()):
+			var value = gradients.get_at(i, j)
+			clipped_gradients.set_at(i, j, clamp(value, -gradient_clip_value, gradient_clip_value))
+	
+	return clipped_gradients
 
 
 func calculate_loss(targets: Matrix, predictions: Matrix) -> float:

@@ -31,6 +31,7 @@ var dqn_config = {
 	"exploration_decreasing_decay": 0.0001,
 	"min_exploration_probability": 0.05,
 	"exploration_strategy": "softmax",
+	"sampling_strategy": "sequential",
 	"discounted_factor": 0.95,
 	"decay_per_steps": 100,
 	"use_replay": true,
@@ -39,20 +40,23 @@ var dqn_config = {
 	"update_target_every_steps": 500,
 	"memory_capacity": 2048,
 	"batch_size": 256,
-	"learning_rate": 0.01,
-	"use_l2_regularization": true,
+	"learning_rate": 0.001,
+	"use_l2_regularization": false,
 	"l2_regularization_strength": 0.1,
 	"use_adam_optimizer": true,
 	"beta1": 0.9,
 	"beta2": 0.999,
 	"epsilon": 1e-7,
-	"early_stopping": true,  # Enable or disable early stopping
-	"patience": 10,          # Number of epochs with no improvement after which training will be stopped
+	"early_stopping": false,  # Enable or disable early stopping
+	"patience": 50,          # Number of epochs with no improvement after which training will be stopped
 	"save_path": "res://dqn_snake.data",  # Path to save the best model
-	"smoothing_window": 5,  # Number of epochs to average for loss smoothing
+	"smoothing_window": 100,  # Number of epochs to average for loss smoothing
 	"check_frequency": 10,    # Frequency of checking early stopping condition
 	"minimum_epochs": 200,   # Minimum epochs before early stopping can trigger
-	"improvement_threshold": 0.00005  # Minimum relative improvement required to reset patience
+	"improvement_threshold": 0.00005,
+		# Gradient Clipping
+	"use_gradient_clipping": true,
+	"gradient_clip_value": 6.0  # Minimum relative improvement required to reset patience
 }
 
 
@@ -72,8 +76,10 @@ func _ready():
 	#dqn.load(dqn.neural_network.save_path, dqn_config)
 
 	# Train the agent
-	for i in range(3000):  # Adjust the number of training episodes as needed
+	for i in range(10000):  # Adjust the number of training episodes as needed
 		print("Training episode:", i + 1)
+		if i % 100 == 0:
+			dqn.save(dqn.neural_network.save_path)
 		run_training_episode()
 
 	training_done = true

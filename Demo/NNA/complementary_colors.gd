@@ -6,7 +6,7 @@ var nnas: NeuralNetworkAdvanced
 @onready var output: ColorRect = $output
 
 var config = {
-	"learning_rate": 0.01,
+	"learning_rate": 0.1,
 	"use_l2_regularization": false,
 	"l2_regularization_strength": 0.001,
 	"use_adam_optimizer": true,
@@ -14,12 +14,14 @@ var config = {
 	"beta2": 0.999,
 	"epsilon": 1e-7,
 	"early_stopping": true,  # Enable or disable early stopping
-	"patience": 10,          # Number of epochs with no improvement after which training will be stopped
+	"patience": 500,          # Number of epochs with no improvement after which training will be stopped
 	"save_path": "res://earlystoptestcolo.data",  # Path to save the best model
-	"smoothing_window": 5,  # Number of epochs to average for loss smoothing
+	"smoothing_window": 10,  # Number of epochs to average for loss smoothing
 	"check_frequency": 10,    # Frequency of checking early stopping condition
 	"minimum_epochs": 1000,   # Minimum epochs before early stopping can trigger
-	"improvement_threshold": 0.00005  # Minimum relative improvement required to reset patience
+	"improvement_threshold": 0.00005,  # Minimum relative improvement required to reset patience
+	"use_gradient_clipping": true,
+	"gradient_clip_value": 0.8
 }
 
 

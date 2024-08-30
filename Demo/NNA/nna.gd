@@ -3,28 +3,30 @@ extends Node2D
 var nnas: NeuralNetworkAdvanced
 
 var config = {
-	"learning_rate": 0.0000005,
+	"learning_rate": 0.011,
 	"use_l2_regularization": false,
 	"l2_regularization_strength": 0.001,
-	"use_adam_optimizer": false,
+	"use_adam_optimizer": true,
 	"beta1": 0.9,
 	"beta2": 0.999,
 	"epsilon": 1e-7,
 	"early_stopping": true,  # Enable or disable early stopping
-	"patience": 15,          # Number of epochs with no improvement after which training will be stopped
+	"patience": 25,          # Number of epochs with no improvement after which training will be stopped
 	"save_path": "res://earlystoptest.data",  # Path to save the best model
 	"smoothing_window": 10,  # Number of epochs to average for loss smoothing
 	"check_frequency": 50,    # Frequency of checking early stopping condition
 	"minimum_epochs": 1000,   # Minimum epochs before early stopping can trigger
-	"improvement_threshold": 0.005  # Minimum relative improvement required to reset patience
+	"improvement_threshold": 0.005,  # Minimum relative improvement required to reset patience
+	"use_gradient_clipping": false,
+	"gradient_clip_value": 1.0
 }
 
 func _ready() -> void:
 	nnas = NeuralNetworkAdvanced.new(config)
 	nnas.add_layer(3)
-	nnas.add_layer(8, nnas.ACTIVATIONS.LINEAR)
+	nnas.add_layer(6, nnas.ACTIVATIONS.LINEAR)
 	nnas.add_layer(1, nnas.ACTIVATIONS.LINEAR)
-	nnas.load(nnas.save_path)
+	#nnas.load(nnas.save_path)
 	
 	#
 	#for i in range(6000):
