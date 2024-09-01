@@ -1,23 +1,26 @@
 extends Node2D
 
-const GRID_SIZE = Vector2i(5, 5)  # The size of the grid
-const EMPTY = 0
-const SNAKE_HEAD = 1.0
-const SNAKE_BODY = 0.75
-const FOOD = 0.5
-const PREV_SNAKE_HEAD = -1.0
-const PREV_SNAKE_BODY = -0.75
-const PREV_FOOD = -0.5
+
+const GRID_SIZE = Vector2i(4, 4)  # The size of the grid (4x4)
+const EMPTY = 0.05
+const SNAKE_HEAD = 0.9
+const SNAKE_BODY = 0.7
+const FOOD = 0.3
+const PREV_SNAKE_HEAD = -0.9
+const PREV_SNAKE_BODY = -0.7
+const PREV_FOOD = -0.3
 
 var grid: Array = []
-var prev_grid: Array = []
+var prev_grid: Array = []  # Add previous grid state
 var snake: Array = []
 var direction: Vector2i = Vector2i(1, 0)  # Start moving right
 var food_position: Vector2i = Vector2i.ZERO
 var game_over: bool = false
+var previous_action: int = -1  # Initialize with an invalid action
 
 var ppo: PPO
 var training_done: bool = false
+
 var af = Activation.new()
 var ACTIVATIONS = af.get_functions()
 
@@ -89,7 +92,7 @@ func _ready():
 
 func initialize_grid():
 	grid = []
-	prev_grid = []
+	prev_grid = []  # Initialize previous grid
 	for x in range(GRID_SIZE.x):
 		var row: Array = []
 		var prev_row: Array = []
@@ -98,9 +101,10 @@ func initialize_grid():
 			prev_row.append(EMPTY)
 		grid.append(row)
 		prev_grid.append(prev_row)
+	previous_action = -1
 
 func place_snake():
-	   # Calculate the center of the grid
+	# Calculate the center of the grid
 	var center_x = GRID_SIZE.x / 2
 	var center_y = GRID_SIZE.y / 2
 	
@@ -161,62 +165,36 @@ func move_snake():
 		grid[tail.x][tail.y] = EMPTY  # Clear the tail position
 
 	# Update the grid to reflect the new snake position
-	# Mark the head with 1 and the tail with -1
 	grid[new_head.x][new_head.y] = SNAKE_HEAD  # Mark the new head
 	for i in range(1, snake.size()):
 		var segment = snake[i]
-		grid[segment.x][segment.y] = SNAKE_BODY  # Mark the tail
-
-
-var previous_distance_to_food = 0.0
-
-func calculate_distance_to_food() -> float:
-	return snake[0].distance_to(food_position)
-
+		grid[segment.x][segment.y] = SNAKE_BODY  # Mark the body
 
 func run_training_episode():
 	initialize_grid()
 	place_snake()
 	spawn_food()
 	game_over = false  # Ensure game_over is reset
-	previous_distance_to_food = calculate_distance_to_food()
 	
 	while not game_over:
 		var state = get_state()
-		var action = ppo.get_action(state)
-		apply_action(action)
+
+		# Use DQN to predict the action to take
+		var action = ppo.get_action(state)  # Predict the action based on the current state
+		
+		apply_action(action)  # Store the action taken as an integer
+		
 		move_snake()
-		print_board()
 
-		var reward: float = 0.0
-
-		if snake[0] == food_position:
-			reward += 10  # Reward for eating food
-		else:
-			reward += 0.1  # Small reward for surviving
-
-		# Calculate distance to food after moving
-		var distance_to_food = calculate_distance_to_food()
-
-		# Additional penalty for moving away from food
-		if distance_to_food > previous_distance_to_food:
-			reward -= 0.2
-		elif distance_to_food == previous_distance_to_food:
-			reward -= 0.1
-
-		previous_distance_to_food = distance_to_food
-
-		# Check if the game is over and apply a penalty
-		if game_over:
-			reward -= 10
-
+		# Calculate the reward after moving the snake
+		var reward = 10 if snake[0] == food_position else -100 if game_over else 0.1
 		var next_state = get_state()
+		# Store the experience and train the DQN
 		ppo.keep(state, action, reward, next_state, game_over)
-		ppo.train()
-
 
 func apply_action(action: int):
 	var proposed_direction: Vector2i
+	previous_action = action
 
 	match action:
 		0: proposed_direction = Vector2i(1, 0)  # Right
@@ -232,15 +210,22 @@ func apply_action(action: int):
 	else:
 		direction = proposed_direction
 
-	#print("Direction updated to:", direction)
-
 func get_state() -> Array:
 	var state: Array = []
+	
+	# Append previous grid state
 	for y in range(GRID_SIZE.y):
 		for x in range(GRID_SIZE.x):
-			# Append current and previous grid states
-			state.append(grid[x][y])
 			state.append(prev_grid[x][y])
+
+	# Append the action taken as a one-hot vector
+	state.append(previous_action)
+
+	# Append current grid state
+	for y in range(GRID_SIZE.y):
+		for x in range(GRID_SIZE.x):
+			state.append(grid[x][y])
+	
 	return state
 
 func visualize_gameplay():
@@ -260,8 +245,8 @@ func visualize_gameplay():
 
 		print_board()
 
-		await get_tree().create_timer(0.3).timeout  # Slow down the game so you can watch
-
+		await get_tree().create_timer(0.5).timeout  # Slow down the game so you can watch
+		
 		# Reset the game if it ends and keep playing
 		if game_over:
 			game_over = false
@@ -271,9 +256,8 @@ func visualize_gameplay():
 
 			print_board()
 
-
 func print_board():
-	print("Current State | Previous State")
+	print("Current State | Previous State | Action Taken: %d" % previous_action)
 	for y in range(GRID_SIZE.y):
 		var current_row = ""
 		var prev_row = ""

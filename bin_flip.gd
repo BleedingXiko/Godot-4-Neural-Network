@@ -15,20 +15,20 @@ var q_network_config = {
 	"sampling_strategy": "sequential",
 	"discounted_factor": 0.9,
 	"decay_per_steps": 100,
-	"use_replay": true,
+	"use_replay": false,
 	"is_learning": true,
 	"use_target_network": false,
 	"memory_capacity": 1024,
-	"batch_size": 32,
-	"learning_rate": 0.01,
+	"batch_size": 16,
+	"learning_rate": 0.05,
 	"l2_regularization_strength": 0.001,
 	"use_l2_regularization": false,
 	"use_adam_optimizer": true,
 	"beta1": 0.9,
 	"beta2": 0.999,
 	"epsilon": 1e-7,
-	"early_stopping": true,  # Enable or disable early stopping
-	"patience": 30,          # Number of epochs with no improvement after which training will be stopped
+	"early_stopping": false,  # Enable or disable early stopping
+	"patience": 500,          # Number of epochs with no improvement after which training will be stopped
 	"save_path": "res://earlystoptestbinflip.data",  # Path to save the best model
 	"smoothing_window": 10,  # Number of epochs to average for loss smoothing
 	"check_frequency": 50,    # Frequency of checking early stopping condition
@@ -42,11 +42,11 @@ func _ready():
 	randomize()
 	q_network = DDQN.new(q_network_config)
 	q_network.add_layer(3)  # Input layer: 3 bits
-	q_network.add_layer(5, ACTIVATIONS.SWISH)  # Hidden layer
+	q_network.add_layer(5, ACTIVATIONS.RELU)  # Hidden layer
 	q_network.add_layer(3, ACTIVATIONS.SIGMOID)  # Output layer: 3 possible actions (flip each bit)
 	#q_network.load(q_network.neural_network.save_path)
 	$VisualizeNet.visualize(q_network.neural_network)
-	for i in range(50):
+	for i in range(8):
 		train_network()
 	play_binary_counter()
 

@@ -1,51 +1,63 @@
 class_name NeuralNetworkAdvanced
 
-var network: Array
+# Variables for the neural network structure
+var network: Array  # Stores the layers of the neural network
+var af = Activation.new()  # Instance of activation functions
+var ACTIVATIONS = af.get_functions()  # Dictionary of available activation functions
 
-var af = Activation.new()
-var ACTIVATIONS = af.get_functions()
-
+# File path to save the best model
 var save_path: String = "res://nn.best.data"
 
-var learning_rate: float = 0.01
-var use_l2_regularization: bool = false
-var l2_regularization_strength: float = 0.001
+# Learning parameters
+var learning_rate: float = 0.01  # Controls the step size during optimization
+var use_l2_regularization: bool = false  # Flag to use L2 regularization to prevent overfitting
+var l2_regularization_strength: float = 0.001  # L2 regularization strength
 var use_adam_optimizer: bool = false  # Controls whether Adam optimizer is used
-var beta1: float = 0.9
-var beta2: float = 0.999
-var epsilon: float = 1e-7
+var beta1: float = 0.9  # Exponential decay rate for the first moment estimate in Adam
+var beta2: float = 0.999  # Exponential decay rate for the second moment estimate in Adam
+var epsilon: float = 1e-7  # Small constant to prevent division by zero in Adam
 
+# Structure of the neural network layers
 var layer_structure = []
 
+# RayCasts used for obtaining input data (specific to a certain application)
 var raycasts: Array[RayCast2D]
 
-# Adam optimizer state
-var momentums: Array = []
-var velocities: Array = []
-var t: int = 0
+# Adam optimizer state variables
+var momentums: Array = []  # Store momentum values for Adam optimizer
+var velocities: Array = []  # Store velocity values for Adam optimizer
+var t: int = 0  # Time step counter for Adam optimizer
 
+# Gradient clipping parameters
 var use_gradient_clipping: bool = true  # Enable or disable gradient clipping
-var gradient_clip_value: float = 1.0    # The maximum absolute value for the gradients
+var gradient_clip_value: float = 1.0  # Maximum absolute value for gradients
 
-# Early Stopping Parameters
-var early_stopping: bool = true
-var has_stopped: bool = false
-var minimum_epochs: int = 100  # Minimum number of epochs before early stopping can trigger
-var patience: int = 50  # Increased patience for early stopping
-var improvement_threshold: float = 0.005  # Relative improvement threshold
+# Early stopping parameters
+var early_stopping: bool = true  # Flag to enable early stopping
+var has_stopped: bool = false  # Flag indicating if early stopping has been triggered
+var minimum_epochs: int = 100  # Minimum epochs before early stopping can be considered
+var patience: int = 50  # Number of epochs to wait before stopping if no improvement
+var improvement_threshold: float = 0.005  # Relative improvement required to reset patience
 
-var best_loss: float = INF
-var epochs_without_improvement: int = 0
+# Variables to track progress for early stopping
+var best_loss: float = INF  # Best recorded loss
+var epochs_without_improvement: int = 0  # Counter for epochs without improvement
 
-var loss_history: Array = []
-var smoothing_window: int = 10  # Number of epochs to average over
-var check_frequency: int = 5  # Frequency of checking early stopping condition
-var steps_completed: int = 0  # Tracks the number of steps/epochs completed
+# Initialization method for weights ("xavier" or "he")
+var initialization_type: String = "xavier"
+
+# Loss history tracking for smoothing and early stopping
+var loss_history: Array = []  # Array to store loss values for each epoch
+var smoothing_window: int = 10  # Number of epochs to average over for smoothing
+var check_frequency: int = 5  # Frequency of checking for early stopping conditions
+var steps_completed: int = 0  # Total number of epochs/steps completed
 
 
+# Initialization function
 func _init(config: Dictionary):
-	set_config(config)
+	set_config(config)  # Set configuration from a dictionary
 
+# Function to set network configuration from a dictionary
 func set_config(config: Dictionary):
 	learning_rate = config.get("learning_rate", learning_rate)
 	use_l2_regularization = config.get("use_l2_regularization", use_l2_regularization)
@@ -59,12 +71,43 @@ func set_config(config: Dictionary):
 	save_path = config.get("save_path", save_path)
 	smoothing_window = config.get("smoothing_window", smoothing_window)
 	check_frequency = config.get("check_frequency", check_frequency)
-	minimum_epochs = config.get("minimum_epochs", minimum_epochs)  # Add minimum_epochs to the config
-	improvement_threshold = config.get("improvement_threshold", improvement_threshold)  # Add relative improvement threshold to the config
-	# Gradient Clipping
+	minimum_epochs = config.get("minimum_epochs", minimum_epochs)
+	improvement_threshold = config.get("improvement_threshold", improvement_threshold)
+
+	# Gradient Clipping Configuration
 	use_gradient_clipping = config.get("use_gradient_clipping", use_gradient_clipping)
 	gradient_clip_value = config.get("gradient_clip_value", gradient_clip_value)
 
+	# Weight Initialization Type
+	initialization_type = config.get("initialization_type", initialization_type)
+
+# Xavier initialization method for weights
+func init_xavier(matrix: Matrix, nodes_out: int, nodes_in: int):
+	var limit: float = sqrt(6.0 / (nodes_in + nodes_out))
+	for i in range(matrix.get_rows()):
+		for j in range(matrix.get_cols()):
+			var value = randf_range(-limit, limit)
+			matrix.set_at(i, j, value)
+
+# He initialization method for weights
+func init_he(matrix: Matrix, nodes_out: int, nodes_in: int):
+	var stddev: float = sqrt(2.0 / nodes_in)
+	for i in range(matrix.get_rows()):
+		for j in range(matrix.get_cols()):
+			var value = stddev * rand_normal()
+			matrix.set_at(i, j, value)
+
+# Function to generate a normally distributed random number using the Box-Muller transform
+func rand_normal(mean: float = 0.0, stddev: float = 1.0) -> float:
+	var u1 = randf()  # Random number in the range [0, 1)
+	var u2 = randf()  # Random number in the range [0, 1)
+	
+	var z0 = sqrt(-2.0 * log(u1)) * cos(2.0 * PI * u2)
+	# var z1 = sqrt(-2.0 * log(u1)) * sin(2.0 * PI * u2)  # Optional second normal value
+	
+	return z0 * stddev + mean
+
+# Function to add a new layer to the network
 func add_layer(nodes: int, activation: Dictionary = ACTIVATIONS.SIGMOID):
 	if layer_structure.size() != 0:
 		var weights: Matrix = Matrix.new()
@@ -72,26 +115,35 @@ func add_layer(nodes: int, activation: Dictionary = ACTIVATIONS.SIGMOID):
 		
 		weights.init(nodes, layer_structure[-1])
 		bias.init(nodes, 1)
-		weights.rand()
-		bias.rand()
 
+		# Initialize weights based on the selected initialization method
+		if initialization_type == "xavier":
+			init_xavier(weights, nodes, layer_structure[-1])
+		elif initialization_type == "he":
+			init_he(weights, nodes, layer_structure[-1])
+		else:
+			# Default random initialization
+			weights.rand()
+		bias.rand()  # Biases can be initialized randomly, typically with small values
+
+		# Store the layer's data
 		var layer_data: Dictionary = {
 			"weights": weights,
 			"bias": bias,
 			"activation": activation
 		}
 
-		# Initialize momentum and velocity for Adam optimizer only if enabled
+		# Initialize momentum and velocity for Adam optimizer if enabled
 		if use_adam_optimizer:
 			var momentum_weights: Matrix = Matrix.new()
-			momentum_weights.init(nodes, layer_structure[-1])  # Initializes with zeros
+			momentum_weights.init(nodes, layer_structure[-1])  # Initialize with zeros
 			var momentum_bias: Matrix = Matrix.new()
-			momentum_bias.init(nodes, 1)  # Initializes with zeros
+			momentum_bias.init(nodes, 1)  # Initialize with zeros
 			
 			var velocity_weights: Matrix = Matrix.new()
-			velocity_weights.init(nodes, layer_structure[-1])  # Initializes with zeros
+			velocity_weights.init(nodes, layer_structure[-1])  # Initialize with zeros
 			var velocity_bias: Matrix = Matrix.new()
-			velocity_bias.init(nodes, 1)  # Initializes with zeros
+			velocity_bias.init(nodes, 1)  # Initialize with zeros
 
 			var momentum: Dictionary = {
 				"weights": momentum_weights,
@@ -108,18 +160,20 @@ func add_layer(nodes: int, activation: Dictionary = ACTIVATIONS.SIGMOID):
 		network.push_back(layer_data)
 	layer_structure.append(nodes)
 
+# Function to update the loss history with the current loss value
 func update_loss_history(current_loss: float):
 	loss_history.append(current_loss)
 	if loss_history.size() > smoothing_window:
 		loss_history.remove_at(0)
 
+# Function to calculate the smoothed loss using a moving average
 func get_smoothed_loss() -> float:
 	var smoothed_loss: float = 0.0
 	for loss in loss_history:
 		smoothed_loss += loss
 	return smoothed_loss / loss_history.size()
 
-
+# Function to make predictions based on input data
 func predict(input_array: Array) -> Array:
 	var inputs: Matrix = Matrix.from_array(input_array)
 	for layer in network:
@@ -129,7 +183,7 @@ func predict(input_array: Array) -> Array:
 		inputs = map
 	return Matrix.to_array(inputs)
 
-
+# Training function that adjusts weights and biases based on input and target data
 func train(input_array: Array, target_array: Array) -> bool:
 	if has_stopped:
 		return false
@@ -138,8 +192,9 @@ func train(input_array: Array, target_array: Array) -> bool:
 	var targets: Matrix = Matrix.from_array(target_array)
 
 	var layer_inputs: Matrix = inputs
-	var outputs: Array[Matrix] = []
-	var unactivated_outputs: Array[Matrix] = []
+	var outputs: Array[Matrix] = []  # Store activated outputs for each layer
+	var unactivated_outputs: Array[Matrix] = []  # Store unactivated outputs for each layer
+	
 	for layer in network:
 		var product: Matrix = Matrix.dot_product(layer.weights, layer_inputs)
 		var sum: Matrix = Matrix.add(product, layer.bias)
@@ -149,9 +204,9 @@ func train(input_array: Array, target_array: Array) -> bool:
 		unactivated_outputs.append(sum)
 	
 	var expected_output: Matrix = targets
-	
 	var next_layer_errors: Matrix
 	
+	# Backpropagation
 	for layer_index in range(network.size() - 1, -1, -1):
 		var layer: Dictionary = network[layer_index]
 		var layer_outputs: Matrix = outputs[layer_index]
@@ -170,10 +225,12 @@ func train(input_array: Array, target_array: Array) -> bool:
 				weight_delta = Matrix.dot_product(gradients, Matrix.transpose(inputs))
 			else:
 				weight_delta = Matrix.dot_product(gradients, Matrix.transpose(outputs[layer_index - 1]))
-				  # Apply gradient clipping
+			
+			# Apply gradient clipping
 			if use_gradient_clipping:
 				gradients = clip_gradients(gradients)
 				weight_delta = clip_gradients(weight_delta)
+			
 			if use_adam_optimizer:
 				# Adam optimizer update
 				t += 1
@@ -192,14 +249,16 @@ func train(input_array: Array, target_array: Array) -> bool:
 				var v_hat_weights = divide_matrix_by_scalar(v.weights, (1 - pow(beta2, t)))
 				var v_hat_bias = divide_matrix_by_scalar(v.bias, (1 - pow(beta2, t)))
 				
-				# Element-wise division using Hadamard product and reciprocal
+				# Update gradients and weights using Adam optimizer
 				weight_delta = multiply_elementwise(m_hat_weights, reciprocal(add_scalar_to_matrix(sqrt_matrix(v_hat_weights), epsilon)))
 				gradients = multiply_elementwise(m_hat_bias, reciprocal(add_scalar_to_matrix(sqrt_matrix(v_hat_bias), epsilon)))
 			
-			# Update weights with L2 Regularization
+			# Update weights and biases with L2 Regularization
 			if use_l2_regularization:
-				var l2_penalty: Matrix = Matrix.scalar(layer.weights, 2 * l2_regularization_strength)
-				weight_delta = Matrix.subtract(weight_delta, l2_penalty)
+				var l2_penalty_weights: Matrix = Matrix.scalar(layer.weights, l2_regularization_strength)
+				var l2_penalty_bias: Matrix = Matrix.scalar(layer.bias, l2_regularization_strength)
+				weight_delta = Matrix.subtract(weight_delta, l2_penalty_weights)
+				gradients = Matrix.subtract(gradients, l2_penalty_bias)
 			
 			network[layer_index].weights = Matrix.add(layer.weights, weight_delta)
 			network[layer_index].bias = Matrix.add(layer.bias, gradients)
@@ -242,28 +301,30 @@ func train(input_array: Array, target_array: Array) -> bool:
 				var v_hat_weights = divide_matrix_by_scalar(v.weights, (1 - pow(beta2, t)))
 				var v_hat_bias = divide_matrix_by_scalar(v.bias, (1 - pow(beta2, t)))
 				
-				# Element-wise division using Hadamard product and reciprocal
+				# Update gradients and weights using Adam optimizer
 				weight_delta = multiply_elementwise(m_hat_weights, reciprocal(add_scalar_to_matrix(sqrt_matrix(v_hat_weights), epsilon)))
 				hidden_gradient = multiply_elementwise(m_hat_bias, reciprocal(add_scalar_to_matrix(sqrt_matrix(v_hat_bias), epsilon)))
 			
-			# Update weights with L2 Regularization
+			# Update weights and biases with L2 Regularization
 			if use_l2_regularization:
-				var l2_penalty: Matrix = Matrix.scalar(layer.weights, 2 * l2_regularization_strength)
-				weight_delta = Matrix.subtract(weight_delta, l2_penalty)
+				var l2_penalty_weights: Matrix = Matrix.scalar(layer.weights, l2_regularization_strength)
+				var l2_penalty_bias: Matrix = Matrix.scalar(layer.bias, l2_regularization_strength)
+				weight_delta = Matrix.subtract(weight_delta, l2_penalty_weights)
+				hidden_gradient = Matrix.subtract(hidden_gradient, l2_penalty_bias)
 			
 			network[layer_index].weights = Matrix.add(layer.weights, weight_delta)
 			network[layer_index].bias = Matrix.add(layer.bias, hidden_gradient)
 
-	# After calculating the raw loss
+	# Calculate the loss for the current epoch
 	var loss: float = calculate_loss(targets, outputs[-1])
 
-	# Add the loss to the history
+	# Update the loss history
 	loss_history.append(loss)
 
-	# Calculate the smoothed loss using moving average
+	# Calculate the smoothed loss using a moving average
 	var smoothed_loss: float = calculate_moving_average(loss_history, smoothing_window)
 
-# Early Stopping Logic using smoothed loss
+	# Early Stopping Logic
 	if early_stopping and steps_completed >= minimum_epochs:
 		# Check if the smoothed loss is an improvement over the best recorded loss
 		if best_loss == INF or (best_loss - smoothed_loss) / abs(best_loss) > improvement_threshold:
@@ -275,16 +336,16 @@ func train(input_array: Array, target_array: Array) -> bool:
 			epochs_without_improvement += 1
 			print("No significant improvement. Epochs without improvement:", epochs_without_improvement)
 
+		# Trigger early stopping if no improvement is observed for 'patience' epochs
 		if epochs_without_improvement >= patience:
 			has_stopped = true
 			print("Early stopping triggered. Restoring best model saved with loss:", best_loss)
 			self.load(save_path)  # Restore the best model state
- # Restore the best model state
 
 	steps_completed += 1
-	return not has_stopped
+	return not has_stopped  # Continue training if early stopping hasn't been triggered
 
-
+# Function to clip gradients to avoid extreme values
 func clip_gradients(gradients: Matrix) -> Matrix:
 	var clipped_gradients: Matrix = Matrix.new()
 	clipped_gradients.init(gradients.get_rows(), gradients.get_cols())
@@ -292,11 +353,11 @@ func clip_gradients(gradients: Matrix) -> Matrix:
 	for i in range(gradients.get_rows()):
 		for j in range(gradients.get_cols()):
 			var value = gradients.get_at(i, j)
-			clipped_gradients.set_at(i, j, clamp(value, -gradient_clip_value, gradient_clip_value))
+			clipped_gradients.set_at(i, j, clampf(value, -gradient_clip_value, gradient_clip_value))
 	
 	return clipped_gradients
 
-
+# Function to calculate the loss (Mean Squared Error)
 func calculate_loss(targets: Matrix, predictions: Matrix) -> float:
 	var error: Matrix = Matrix.subtract(targets, predictions)
 	var loss: float = 0.0
@@ -305,13 +366,14 @@ func calculate_loss(targets: Matrix, predictions: Matrix) -> float:
 			loss += pow(error.get_at(i, j), 2)
 	return loss / error.get_rows()
 
+# Function to calculate a moving average over a specified window size
 func calculate_moving_average(values: Array, window_size: int) -> float:
 	var moving_sum: float = 0.0
 	for i in range(max(0, values.size() - window_size), values.size()):
 		moving_sum += values[i]
 	return moving_sum / min(values.size(), window_size)
 
-
+# Function to create a copy of the neural network with the same structure and parameters
 func copy() -> NeuralNetworkAdvanced:
 	# Copy other necessary properties if there are any
 	var new_network = NeuralNetworkAdvanced.new(
@@ -330,7 +392,7 @@ func copy() -> NeuralNetworkAdvanced:
 			"weights": Matrix.copy(layer.weights),  # Copy weights
 			"bias": Matrix.copy(layer.bias),       # Copy biases
 			"activation": layer.activation        # Copy activation function
-		}
+			}
 		new_network.network.push_back(layer_copy)
 		
 	new_network.layer_structure = layer_structure.duplicate()
@@ -392,8 +454,9 @@ func reciprocal(matrix: Matrix) -> Matrix:
 			result.set_at(i, j, 1.0 / matrix.get_at(i, j))
 	return result
 
+# Function to get input data from RayCasts (specific to a certain application)
 func get_inputs_from_raycasts() -> Array:
-	assert(raycasts.size() != 0, "Can not get inputs from RayCasts that are not set!")
+	assert(raycasts.size() != 0, "Cannot get inputs from RayCasts that are not set!")
 	
 	var _input_array: Array[float]
 	
@@ -402,13 +465,15 @@ func get_inputs_from_raycasts() -> Array:
 	
 	return _input_array
 
+# Function to make predictions based on RayCast input data (specific to a certain application)
 func get_prediction_from_raycasts(optional_val: Array = []) -> Array:
-	assert(raycasts.size() != 0, "Can not get inputs from RayCasts that are not set!")
+	assert(raycasts.size() != 0, "Cannot get inputs from RayCasts that are not set!")
 	
 	var _array_ = get_inputs_from_raycasts()
 	_array_.append_array(optional_val)
 	return predict(_array_)
 
+# Function to get the distance from RayCast to the collision point
 func get_distance(_raycast: RayCast2D):
 	var distance: float = 0.0
 	if _raycast.is_colliding():
@@ -420,6 +485,7 @@ func get_distance(_raycast: RayCast2D):
 		distance = sqrt((pow(_raycast.target_position.x, 2) + pow(_raycast.target_position.y, 2)))
 	return distance
 
+# Function to save the model to a file
 func save(path: String):
 	var file = FileAccess.open(path, FileAccess.WRITE)
 	var data_to_save = []
@@ -435,6 +501,7 @@ func save(path: String):
 	file.close()
 	print(data_to_save)
 
+# Function to return the network structure for debugging purposes
 func debug():
 	var data = []
 	for layer in network:
@@ -446,6 +513,7 @@ func debug():
 		data.append(layer_data)
 	return data
 
+# Function to load the model from a file
 func load(path: String):
 	var file = FileAccess.open(path, FileAccess.READ)
 	var data = file.get_var()

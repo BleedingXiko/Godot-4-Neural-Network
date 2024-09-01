@@ -9,7 +9,6 @@ const PREV_SNAKE_HEAD = -0.9
 const PREV_SNAKE_BODY = -0.7
 const PREV_FOOD = -0.3
 
-
 var grid: Array = []
 var prev_grid: Array = []  # Add previous grid state
 var snake: Array = []
@@ -18,7 +17,7 @@ var food_position: Vector2i = Vector2i.ZERO
 var game_over: bool = false
 var previous_action: int = -1  # Initialize with an invalid action
 
-var dqn: DQN
+var dqn: DDQN
 var training_done: bool = false
 
 var af = Activation.new()
@@ -28,37 +27,36 @@ var ACTIVATIONS = af.get_functions()
 var dqn_config = {
 	"print_debug_info": false,
 	"exploration_probability": 1.0,
-	"exploration_decreasing_decay": 0.0001,
+	"exploration_decreasing_decay": 0.00005,
 	"min_exploration_probability": 0.05,
-	"exploration_strategy": "softmax",
+	"exploration_strategy": "epsilon_greedy",
 	"sampling_strategy": "sequential",
 	"discounted_factor": 0.95,
 	"decay_per_steps": 100,
-	"use_replay": true,
+	"use_replay": false,
 	"is_learning": true,
 	"use_target_network": true,
 	"update_target_every_steps": 500,
 	"memory_capacity": 2048,
-	"batch_size": 256,
+	"batch_size": 64,
 	"learning_rate": 0.001,
-	"use_l2_regularization": false,
-	"l2_regularization_strength": 0.1,
+	"use_l2_regularization": true,
+	"l2_regularization_strength": 0.01,
 	"use_adam_optimizer": true,
 	"beta1": 0.9,
 	"beta2": 0.999,
 	"epsilon": 1e-7,
-	"early_stopping": false,  # Enable or disable early stopping
-	"patience": 50,          # Number of epochs with no improvement after which training will be stopped
-	"save_path": "res://dqn_snake.data",  # Path to save the best model
-	"smoothing_window": 100,  # Number of epochs to average for loss smoothing
-	"check_frequency": 10,    # Frequency of checking early stopping condition
-	"minimum_epochs": 200,   # Minimum epochs before early stopping can trigger
+	"early_stopping": false,
+	"patience": 50,
+	"save_path": "res://dqn_snake.data",
+	"smoothing_window": 100,
+	"check_frequency": 10,
+	"minimum_epochs": 200,
 	"improvement_threshold": 0.00005,
-		# Gradient Clipping
 	"use_gradient_clipping": true,
-	"gradient_clip_value": 6.0  # Minimum relative improvement required to reset patience
+	"gradient_clip_value": 1,
+	"initialization_type": "he"
 }
-
 
 func _ready():
 	initialize_grid()
@@ -66,19 +64,16 @@ func _ready():
 	spawn_food()
 
 	# Initialize DQN with the provided configurations
-	dqn = DQN.new(dqn_config)
+	dqn = DDQN.new(dqn_config)
 	dqn.add_layer(33)  # Adjust for time series input (current + previous)
-	dqn.add_layer(28, ACTIVATIONS.TANH)
-	dqn.add_layer(16, ACTIVATIONS.TANH)
-	dqn.add_layer(4, ACTIVATIONS.LINEAR)  # 4 possible actions (up, down, left, right)
+	dqn.add_layer(46, ACTIVATIONS.ELU)
+	dqn.add_layer(28, ACTIVATIONS.ELU)
+	dqn.add_layer(4, ACTIVATIONS.SIGMOID)  # 4 possible actions (up, down, left, right)
 	
-	# Uncomment the next line if you have a pre-trained model to load
-	#dqn.load(dqn.neural_network.save_path, dqn_config)
-
 	# Train the agent
-	for i in range(10000):  # Adjust the number of training episodes as needed
+	for i in range(1000):  # Adjust the number of training episodes as needed
 		print("Training episode:", i + 1)
-		if i % 100 == 0:
+		if i % 50 == 0:
 			dqn.save(dqn.neural_network.save_path)
 		run_training_episode()
 
@@ -149,7 +144,7 @@ func move_snake():
 	# Check if the new head is out of bounds or hits the body
 	if new_head.x < 0 or new_head.x >= GRID_SIZE.x or new_head.y < 0 or new_head.y >= GRID_SIZE.y or grid[new_head.x][new_head.y] == SNAKE_BODY:
 		game_over = true
-		#print("Game Over")
+		print("Game Over")
 		return
 
 	# Check if the snake has eaten the food
@@ -168,8 +163,7 @@ func move_snake():
 	grid[new_head.x][new_head.y] = SNAKE_HEAD  # Mark the new head
 	for i in range(1, snake.size()):
 		var segment = snake[i]
-		grid[segment.x][segment.y] = SNAKE_BODY  # Mark the tail
-
+		grid[segment.x][segment.y] = SNAKE_BODY  # Mark the body
 
 func run_training_episode():
 	initialize_grid()
@@ -186,17 +180,12 @@ func run_training_episode():
 		apply_action(action)  # Store the action taken as an integer
 		
 		move_snake()
-		#print_board()
 
 		# Calculate the reward after moving the snake
-		var reward = 10 if snake[0] == food_position else -20 if game_over else 0.01
+		var reward = 10 if snake[0] == food_position else -100 if game_over else 0.1
 
 		# Store the experience and train the DQN
 		dqn.train(state, reward, game_over)
-
-		if game_over:
-			break
-
 
 func apply_action(action: int):
 	var proposed_direction: Vector2i
@@ -234,8 +223,6 @@ func get_state() -> Array:
 	
 	return state
 
-
-
 func visualize_gameplay():
 	if not training_done:
 		return
@@ -253,12 +240,6 @@ func visualize_gameplay():
 
 		print_board()
 
-		
-				# Calculate the reward after moving the snake
-		var reward = 10 if snake[0] == food_position else -20 if game_over else 0.01
-
-		# Store the experience and train the DQN
-		dqn.train(state, reward, game_over)
 		await get_tree().create_timer(0.5).timeout  # Slow down the game so you can watch
 		
 		# Reset the game if it ends and keep playing

@@ -6,23 +6,30 @@ var nnas: NeuralNetworkAdvanced
 @onready var output: ColorRect = $output
 
 var config = {
-	"learning_rate": 0.1,
+	"learning_rate": 0.0000005,
 	"use_l2_regularization": false,
 	"l2_regularization_strength": 0.001,
 	"use_adam_optimizer": true,
 	"beta1": 0.9,
 	"beta2": 0.999,
 	"epsilon": 1e-7,
-	"early_stopping": true,  # Enable or disable early stopping
-	"patience": 500,          # Number of epochs with no improvement after which training will be stopped
-	"save_path": "res://earlystoptestcolo.data",  # Path to save the best model
-	"smoothing_window": 10,  # Number of epochs to average for loss smoothing
-	"check_frequency": 10,    # Frequency of checking early stopping condition
-	"minimum_epochs": 1000,   # Minimum epochs before early stopping can trigger
-	"improvement_threshold": 0.00005,  # Minimum relative improvement required to reset patience
-	"use_gradient_clipping": true,
-	"gradient_clip_value": 0.8
+	"early_stopping": true,
+	"patience": 1500,
+	"minimum_epochs": 1500,
+	"smoothing_window": 75,
+	"check_frequency": 5,
+	"save_path": "res://nn.best.data",
+	
+	# Gradient Clipping
+	"use_gradient_clipping": false,
+	"gradient_clip_value": 1.0,
+
+	# Weight Initialization
+	"initialization_type": "xavier-"  # Options are "xavier" or "he"
 }
+
+var neural_network = NeuralNetworkAdvanced.new(config)
+
 
 
 
@@ -46,7 +53,7 @@ func _ready() -> void:
 	# Randomly choose the number of hidden layers (between 1 and 3)
 	var num_hidden_layers = randi_range(1, 3)
 
-	nnas.add_layer(6, nnas.ACTIVATIONS.LINEAR)
+	nnas.add_layer(6, nnas.ACTIVATIONS.SIGMOID)
 	#for i in range(num_hidden_layers):
 		## Randomly choose the number of neurons for this layer (between 1 and 10)
 		#var num_neurons = randi_range(3, 6)
@@ -58,7 +65,7 @@ func _ready() -> void:
 
 	# Output layer with 3 neurons (for RGB values)
 	nnas.add_layer(3, nnas.ACTIVATIONS.LINEAR)
-	nnas.load(nnas.save_path)
+	#nnas.load(nnas.save_path)
 	$VisualizeNet.visualize(nnas)
 	$VisualizeNet2.visualize(nnas)
 

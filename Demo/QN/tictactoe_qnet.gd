@@ -1,6 +1,7 @@
 extends Node2D
 
-var qt_x: DQN
+var qt_x: DDQN
+var qt_o: DDQN
 var board = [0, 0, 0, 0, 0, 0, 0, 0, 0]
 var player = 1
 var waiting_for_input = false
@@ -10,33 +11,37 @@ var af = Activation.new()
 var ACTIVATIONS = af.get_functions()
 
 var config = {
-	"print_debug_info": false,
+	"print_debug_info": true,
 	"exploration_probability": 1.0,
-	"exploration_decreasing_decay": 0.0001,
-	"min_exploration_probability": 0.05,
-	"exploration_strategy": "softmax",
-	"discounted_factor": 0.95,
-	"decay_per_steps": 100,
+	"exploration_decreasing_decay": 0.00001,
+	"min_exploration_probability": 0.15,
+	"exploration_strategy": "softmax",  # Changed to epsilon_greedy
+	"sampling_strategy": "sequential",
+	"discounted_factor": 0.98,
+	"decay_per_steps": 250,
 	"use_replay": true,
 	"is_learning": true,
 	"use_target_network": true,
-	"update_target_every_steps": 500,
-	"memory_capacity": 2048,
-	"batch_size": 256,
-	"learning_rate": 0.01,
+	"update_target_every_steps": 1000,
+	"memory_capacity": 256,
+	"batch_size": 25,
+	"learning_rate": 0.00005,
 	"use_l2_regularization": true,
-	"l2_regularization_strength": 0.1,
+	"l2_regularization_strength": 1,
 	"use_adam_optimizer": true,
 	"beta1": 0.9,
 	"beta2": 0.999,
-	"epsilon": 1e-7,
-	"early_stopping": true,  # Enable or disable early stopping
-	"patience": 15,          # Number of epochs with no improvement after which training will be stopped
-	"save_path": "res://dqn_snake.data",  # Path to save the best model
-	"smoothing_window": 100,  # Number of epochs to average for loss smoothing
-	"check_frequency": 10,    # Frequency of checking early stopping condition
-	"minimum_epochs": 200,   # Minimum epochs before early stopping can trigger
-	"improvement_threshold": 0.00005  # Minimum relative improvement required to reset patience
+	"epsilon": 1e-6,
+	"early_stopping": false,
+	"patience": 15,
+	"save_path": "res://dqn_snake.data",
+	"smoothing_window": 100,
+	"check_frequency": 10,
+	"minimum_epochs": 200,
+	"improvement_threshold": 0.00005,
+	"use_gradient_clipping": true,
+	"gradient_clip_value": 0.3,
+	"initialization_type": "xavier",
 }
 
 var x_wins: int = 0
@@ -46,27 +51,37 @@ var draws: int = 0
 @onready var input_timer: Timer = $Timer
 
 func _ready() -> void:
-	qt_x = DQN.new(config)
-	qt_x.add_layer(9)  # Input layer (implicitly)
-	qt_x.add_layer(6, ACTIVATIONS.TANH)
-	qt_x.add_layer(6, ACTIVATIONS.TANH)  # Hidden layer with ELU activation
-	qt_x.add_layer(9, ACTIVATIONS.SIGMOID)  # Output layer with no activation function (linear)
+	# Initialize agents for X and O
+	qt_x = DDQN.new(config)
+	qt_x.add_layer(9)
+	qt_x.add_layer(18, ACTIVATIONS.SIGMOID)
+	qt_x.add_layer(10, ACTIVATIONS.SIGMOID)
+	qt_x.add_layer(9, ACTIVATIONS.SIGMOID)
+
+	qt_o = DDQN.new(config)
+	qt_o.add_layer(9)
+	qt_o.add_layer(16, ACTIVATIONS.SIGMOID)
+	qt_o.add_layer(8, ACTIVATIONS.SIGMOID)
+	qt_o.add_layer(9, ACTIVATIONS.SIGMOID)
 	
-	#qt_x.load("user://qnet_ttt.data", q_network_config)
+	#qt_x.load("user://ddqnet_x_ttt.data", config)
+	#qt_o.load("user://ddqnet_o_ttt.data", config)
+
 	train_networks()
-	qt_x.save("user://qnet_ttt.data")
-	qt_x.load("user://qnet_ttt.data")
+
+	$VisualizeNet.visualize(qt_x.neural_network)
+	$VisualizeNet2.visualize(qt_o.neural_network)
+	qt_x.save("user://ddqnet_x_ttt2.data")
+	qt_o.save("user://ddqnet_o_ttt2.data")
+
+	qt_x.load("user://ddqnet_x_ttt2.data")
+	qt_o.load("user://ddqnet_o_ttt2.data")
 
 	print("Training complete. Ready to play!")
 	play_against_ai()
 	o_wins = 0
 	x_wins = 0
 	draws = 0
-
-func train_networks():
-	for i in range(1000):
-		init_board()
-		train_game()
 
 func train_game():
 	var done = false
@@ -76,28 +91,45 @@ func train_game():
 	while not done:
 		var state = board.duplicate()
 
-		# Predict action based on the current state and player
-		var action: int = qt_x.choose_action(state)
+		# Choose action based on the current player
+		var action: int
+		if player == 1:
+			action = qt_x.choose_action(state)
+		else:
+			action = qt_o.choose_action(state)
 
 		if update_board(player, action):
 			current_reward = determine_value_training(board, player)
-			done = check_end_game()  # End the game if there's a win/loss/draw
+			done = check_end_game()
 
-			# Update previous reward for the current player
 			previous_reward = current_reward
-			qt_x.train(board, previous_reward, done)
+			if player == 1:
+				qt_x.train(board, previous_reward, done)
+			else:
+				qt_o.train(board, previous_reward, done)
 		else:
-			# Invalid move, punish player
+			# Invalid move, punish player but don't end the game
 			current_reward = -0.5
-			done = true
-			previous_reward = current_reward
+			if player == 1:
+				qt_x.train(board, current_reward, false)
+			else:
+				qt_o.train(board, current_reward, false)
+			continue
 
 		if not done:
 			player = switch_player(player)
 
-	# Ensure final state is processed
-	qt_x.train(board, previous_reward, true)
+	if player == 1:
+		qt_x.train(board, previous_reward, true)
+	else:
+		qt_o.train(board, previous_reward, true)
+
 	update_win_counts(has_winner(board))
+
+func train_networks():
+	for i in range(1000):
+		init_board()
+		train_game()
 
 func _input(event: InputEvent) -> void:
 	if event.is_action_pressed("1"):
@@ -125,7 +157,6 @@ func _input(event: InputEvent) -> void:
 		$Timer.stop()
 		$Timer.emit_signal("timeout")
 
-
 func play_against_ai():
 	init_board()
 	print_board()
@@ -136,15 +167,23 @@ func play_against_ai():
 			waiting_for_input = true
 			input_timer.start()
 			await input_timer.timeout
+			# Train DQN after player's move
+			if not check_end_game():
+				train_dqn_after_move()
 		else:
-			var action = qt_x.choose_action(board)
+			var action = qt_o.choose_action(board)
 			if update_board(player, action):
 				print_board()
 				if check_end_game():
 					await get_tree().create_timer(2.0).timeout
 					continue  # Start a new game
+				train_dqn_after_move()
 				player = switch_player(player)
-				continue  # Start a new game
+
+func train_dqn_after_move():
+	var reward = determine_value_training(board, player)
+	qt_x.train(board.duplicate(), reward, check_end_game())
+
 
 func ai_move(ai_player_turn: int) -> int:
 	var valid_move = false
@@ -167,7 +206,6 @@ func check_end_game() -> bool:
 		return true
 	return false
 
-
 func update_board(player: int, index: int) -> bool:
 	if board[index] == 0:
 		board[index] = player
@@ -185,10 +223,10 @@ func determine_value_training(_board: Array, player_turn: int) -> float:
 	var result = has_winner(_board)
 
 	if result == 1:  # X wins
-		return 1.0 if player_turn == 1 else -1.0  # Positive reward for X, negative for O
+		return 2.0 if player_turn == 1 else -5.0  # Positive reward for X, negative for O
 	elif result == 2:  # O wins
-		return 1.0 if player_turn == 2 else -1.0  # Positive reward for O, negative for X
-	return 0.1 # Draw
+		return 2.0 if player_turn == 2 else -5.0  # Positive reward for O, negative for X
+	return 0.1  # Increased the reward for a draw to encourage more strategic play
 
 func switch_player(player: int) -> int:
 	return 2 if player == 1 else 1

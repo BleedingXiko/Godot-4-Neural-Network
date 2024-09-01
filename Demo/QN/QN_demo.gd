@@ -1,63 +1,61 @@
 extends Node2D
 
-var qnet: DQN
-var af = Activation.new()
-var ACTIVATIONS = af.get_functions()
-
+var dqn: DDQN
 var row: int = 0
 var column: int = 0
 
-@onready var six = $bck/six
-@onready var five = $bck/five
-@onready var tf = $bck/tf
-
-var reward_states = [5, 6, 34]
+var reward_states = [4, 24, 35]
 var target: int = reward_states.pick_random()
 var punish_states = [3, 18, 21, 28, 31]
 
-var current_state: Array = []
+var grid_size: int = 6
+var grid: Array = []
+
 var previous_reward: float = 0.0
-
-
+var total_iteration_rewards: Array[float] = []
+var current_iteration_rewards: float = 0.0
 var done: bool = false
 
-var q_network_config = {
-	"print_debug_info": true,
+var dqn_config = {
+	"print_debug_info": false,
 	"exploration_probability": 1.0,
-	"exploration_decreasing_decay": 0.005,
+	"exploration_decreasing_decay": 0.001,
 	"min_exploration_probability": 0.15,
-	"exploration_strategy": "epsilon_greedy",
-	"discounted_factor": 0.95,
+	"exploration_strategy": "softmax",  # Changed to epsilon-greedy
+	"sampling_strategy": "sequential",
+	"discounted_factor": 0.99,
 	"decay_per_steps": 250,
-	"use_replay": true,
+	"use_replay": false,
 	"is_learning": true,
 	"use_target_network": true,
-	"update_target_every_steps": 3000,
+	"update_target_every_steps": 500,
 	"memory_capacity": 1024,
 	"batch_size": 128,
-	"learning_rate": 0.0001, 
-	"l2_regularization_strength": 0.001,
-	"use_l2_regularization": false,
+	"learning_rate": 0.1,
+	"use_l2_regularization": true,
+	"l2_regularization_strength": 0.1,
+	"use_adam_optimizer": true,
+	"beta1": 0.9,
+	"beta2": 0.999,
+	"epsilon": 1e-7,
+	"early_stopping": false,
+	"patience": 15,
+	"save_path": "res://dqn_snake.data",
+	"smoothing_window": 100,
+	"check_frequency": 10,
+	"minimum_epochs": 200,
+	"improvement_threshold": 0.00005,
+	"use_gradient_clipping": true,
+	"gradient_clip_value": 1.0,
+	"initialization_type": "xavier" 
 }
 
-var initial_grid := [
-	0, -1, 0, 0, 0, 0,
-	0, 0, 0, 0, -1, 0,
-	-1, 0, 0, -1, 0, 0,
-	0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0,
-	0, 0, 0, -1, 0, 0
-]
-
-var grid := []
-
 func _ready() -> void:
-	qnet = DQN.new(q_network_config)
-	qnet.add_layer(initial_grid.size())
-	qnet.add_layer(8, ACTIVATIONS.SIGMOID)
-	qnet.add_layer(10, ACTIVATIONS.SIGMOID)
-	qnet.add_layer(4, ACTIVATIONS.SIGMOID)
-	update_grid(row, column, target)
+	dqn = DDQN.new(dqn_config)
+	dqn.add_layer(grid_size * grid_size)  # Input layer matches the entire grid
+	dqn.add_layer(22, dqn.neural_network.ACTIVATIONS.RELU)  # Hidden layer with more neurons to handle spatial complexity
+	dqn.add_layer(4, dqn.neural_network.ACTIVATIONS.SIGMOID)  # Output layer: 4 possible actions (up, down, left, right)
+	reset()
 
 func _process(_delta: float) -> void:
 	if Input.is_action_just_pressed("predict"):
@@ -65,66 +63,64 @@ func _process(_delta: float) -> void:
 	elif Input.is_action_just_pressed("ui_down"):
 		$Timer.wait_time = 0.001
 
-func hash_state(state_array: Array, hash_range: int) -> int:
-	var hash_value := 0
-	var prime := 31
-
-	for state in state_array:
-		hash_value = (hash_value * prime + state) % hash_range
-
-	return hash_value
-
-func print_grid():
-	for i in range(6):
-		var row_str := ""
-		for j in range(6):
-			row_str += str(grid[i * 6 + j]) + " "
-		print(row_str)
-	print("\n\n")
-
 func _on_timer_timeout():
-	#print_grid()
-	current_state = grid
-	var action_to_do: int = qnet.choose_action(current_state)
+	update_grid()  # Refresh grid representation based on current positions
+	var action_to_do: int = dqn.choose_action(grid)
 	if done:
 		reset()
-	
+
+	current_iteration_rewards += previous_reward
 	previous_reward = 0.0
-		
+
 	if is_out_bound(action_to_do):
-		previous_reward -= 1
+		previous_reward -= 0.75
 		done = true
-		
-	elif row * 6 + column in punish_states:
+	elif row * grid_size + column in punish_states:
 		previous_reward -= 0.5
 		done = true
-	elif (row * 6 + column) == target:
+	elif (row * grid_size + column) == target:
 		previous_reward += 1.0
-		done = false
+		done = true
 		target = reward_states.pick_random()
 	else:
 		previous_reward -= 0.05
-		
-	qnet.train(current_state, previous_reward, done)
-	update_grid(row, column, target)
-	$player.position = Vector2(96 * column + 16, 96 * (5 - row) + 16)  # Adjust for correct visual alignment
-	$lr.text = str(qnet.exploration_probability)
+
+	# Update the DQN with the new state, action, and reward
+	dqn.train(grid, previous_reward, done)
+
+	# Update the player's position visually
+	$player.position = Vector2(96 * column + 16, 96 * (grid_size - 1 - row) + 16)  # Aligns correctly with the grid
+	$lr.text = str(dqn.exploration_probability)
 	$target.text = str(target)
-	print_grid()
 
-func update_grid(row: int, column: int, target: int):
-	# Reset the grid to the initial configuration
-	grid = initial_grid.duplicate()  # Make a copy of the initial grid
-
-	# Set the player's new position
-	grid[row * 6 + column] = 1
-
-	# Convert target index to row and column
-	var target_row = int(target / 6)
-	var target_column = target % 6
+func update_grid():
+	grid = []
+	for i in range(grid_size * grid_size):
+		grid.append(0)  # Initialize the grid with empty cells (0)
 	
-	# Place the new target
-	grid[target_row * 6 + target_column] = 3
+	# Correctly align the player's position (flip row index)
+	grid[(grid_size - 1 - row) * grid_size + column] = 1  # Player's position is marked as 1
+	
+	# Correctly align the target position (flip row index)
+	var target_row = int(target / grid_size)
+	var target_col = target % grid_size
+	grid[(grid_size - 1 - target_row) * grid_size + target_col] = 2  # Target position is marked as 2
+	
+	# Correctly align punishment positions (flip row index)
+	for punish_state in punish_states:
+		var punish_row = int(punish_state / grid_size)
+		var punish_col = punish_state % grid_size
+		grid[(grid_size - 1 - punish_row) * grid_size + punish_col] = -1  # Punishment positions are marked as -1
+
+	# Display the grid in the console to visualize what the AI sees
+	print("AI Grid View:")
+	for i in range(grid_size):
+		var row_str = ""
+		for j in range(grid_size):
+			row_str += str(grid[i * grid_size + j]) + " "
+		print(row_str)
+	print("\n")
+
 
 
 func is_out_bound(action: int) -> bool:
@@ -132,10 +128,10 @@ func is_out_bound(action: int) -> bool:
 	var _row := row
 	match action:
 		0: _column -= 1  # Left
-		1: _row += 1    # Down
+		1: _row += 1     # Down
 		2: _column += 1  # Right
-		3: _row -= 1    # Up
-	if _column < 0 or _row < 0 or _column > 5 or _row > 5:
+		3: _row -= 1     # Up
+	if _column < 0 or _row < 0 or _column >= grid_size or _row >= grid_size:
 		return true
 	else:
 		column = _column
@@ -144,28 +140,16 @@ func is_out_bound(action: int) -> bool:
 
 func reset():
 	target = reward_states.pick_random()
-	row = randi_range(0, 5)
-	column = randi_range(0, 5)
+	row = randi_range(0, grid_size - 1)
+	column = randi_range(0, grid_size - 1)
 	done = false
-	$player.position = Vector2(96 * column + 16, 96 * (5 - row) + 16)  # Adjust for correct visual alignment
-	update_grid(row, column, target)
-	if target == 5:
-		five.show()
-		six.hide()
-		tf.hide()
-	elif target == 6:
-		five.hide()
-		six.show()
-		tf.hide()
-	elif target == 34:
-		five.hide()
-		six.hide()
-		tf.show()
-	
-
+	total_iteration_rewards.append(current_iteration_rewards)
+	current_iteration_rewards = 0.0
+	$player.position = Vector2(96 * column + 16, 96 * (grid_size - 1 - row) + 16)  # Correctly aligns with the grid
+	update_grid()
 
 func _on_save_pressed():
-	qnet.save('user://qnet.data')
+	dqn.save('user://dqn.data')
 
 func _on_load_pressed():
-	qnet.load('user://qnet.data')
+	dqn.load('user://dqn.data', dqn_config)

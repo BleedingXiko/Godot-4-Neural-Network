@@ -25,7 +25,7 @@ var q_table_config = {
 	"learning_rate": 0.01,
 	"decay_per_steps": 100,
 	"max_state_value": 2,
-	"random_weights": false,
+	"random_weights": true,
 }
 
 func _ready() -> void:
@@ -33,41 +33,42 @@ func _ready() -> void:
 	qt.init(9 * 3, 9, q_table_config)
 	
 	# Load previously saved QTable for gameplay
-	qt.load('user://qt_ttt.data', {"is_learning": false, "exploration_strategy": "epsilon_greedy"})
-	#for i in range(200000):
-		#init_board()
-		#play_game()
-	qt.save('user://qt_ttt.data')
+	#qt.load('user://qt_ttt.data', {"is_learning": false, "exploration_strategy": "epsilon_greedy"})
+	
+	for i in range(10000):
+		play_game()
 	print("Ready to play against AI!")
+	qt.save('user://qt_ttt.data')
 	x_wins = 0
 	o_wins = 0
 	draws = 0
 	play_against_ai()
 
-func hash_state(state_array: Array, hash_range: int) -> int:
+func hash_state(state_array: Array) -> int:
 	var hash_value := 0
 	var prime := 31
 
 	for state in state_array:
-		hash_value = (hash_value * prime + state) % hash_range
+		hash_value = (hash_value * prime + state) % (9 * 3)
 
 	return hash_value
 
 func play_game():
+	init_board()
 	var done = false
 	var player_turn = randi_range(1, 2)
-	var previous_reward = -100.0
+	var previous_reward = -1.0
 	var current_reward: float
 	
 	while not done:
-		var state = hash_state(board, 9 * 3)
+		var state = hash_state(board)
 		var action: int = qt.predict([state], previous_reward)
 
 		if update_board(player_turn, action):
 			current_reward = determine_value_training(board, player_turn)
 
 			# Update the reward for the current player
-			previous_reward = (previous_reward + current_reward) / 2.0
+			previous_reward = current_reward
 
 			done = current_reward != -1  # The game ends if there's a win/loss or draw
 
@@ -75,11 +76,10 @@ func play_game():
 				player_turn = switch_player(player_turn)
 		else:
 			# Invalid move, punish player
-			current_reward = -1.5
-			previous_reward = (previous_reward + current_reward) / 2.0
+			current_reward = -10.0
+			previous_reward = current_reward
 			done = true
 		
-
 	update_win_counts(has_winner(board))
 
 func _input(event: InputEvent) -> void:
@@ -110,7 +110,8 @@ func _input(event: InputEvent) -> void:
 func process_player_move(action: int):
 	if action >= 0 and action < 9 and update_board(player, action):
 		print_board()
-		check_end_game()
+		if check_end_game():
+			reset_board()
 		player = switch_player(player)  # Switch to AI
 	else:
 		print("Invalid move. Try again.")
@@ -119,10 +120,12 @@ func determine_value_training(_board: Array, player_turn: int) -> float:
 	var result = has_winner(_board)
 	
 	if result == 1:  # X wins
-		return 2.0 if player_turn == 1 else -2.0  # Positive reward for X, negative for O
+		return 10.0 if player_turn == 1 else -10.0  # Positive reward for X, negative for O
 	elif result == 2:  # O wins
-		return 2.0 if player_turn == 2 else -2.0  # Positive reward for O, negative for X
-	return -1 # Draw
+		return 10.0 if player_turn == 2 else -10.0  # Positive reward for O, negative for X
+	elif result == -1: # Draw
+		return 5.0
+	return -1.0  # Continue playing
 
 func play_against_ai():
 	init_board()
@@ -135,11 +138,12 @@ func play_against_ai():
 			input_timer.start()
 			await input_timer.timeout
 		else:
-			var action = qt.predict([hash_state(board, 9 * 3)], 0)
+			var action = qt.predict([hash_state(board)], 0)
 			if update_board(player, action):
 				print_board()
 				if check_end_game():
 					await get_tree().create_timer(2.0).timeout
+					reset_board()
 					continue  # Start a new game
 				player = switch_player(player)
 			else:
@@ -149,6 +153,7 @@ func play_against_ai():
 						print_board()
 						if check_end_game():
 							await get_tree().create_timer(2.0).timeout
+							reset_board()
 							continue  # Start a new game
 						player = switch_player(player)
 				# AI retries until a valid move is made
@@ -167,7 +172,6 @@ func check_end_game() -> bool:
 	var winner = has_winner(board)
 	if winner != 0:
 		update_win_counts(winner)
-		init_board()  # Reset the board for a new game
 		return true
 	return false
 
@@ -196,6 +200,10 @@ func update_win_counts(winner: int):
 
 func switch_player(current_player: int) -> int:
 	return 2 if current_player == 1 else 1
+
+func reset_board():
+	init_board()
+	print_board()
 
 func print_board():
 	var spacing = "\n\n"

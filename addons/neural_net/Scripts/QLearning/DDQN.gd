@@ -1,13 +1,6 @@
 class_name DDQN
 extends DQN
 
-func _init(config: Dictionary) -> void:
-	super(config)  # Call the base class's init method
-	# Ensure the target network is initialized properly
-	if use_target_network:
-		target_neural_network = neural_network.copy()
-
-
 func train_batch(batch: Array):
 	for experience in batch:
 		# Determine if the batch is time series by checking if the "state" is an array of arrays

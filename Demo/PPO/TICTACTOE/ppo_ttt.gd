@@ -1,6 +1,7 @@
 extends Node2D
 
-var ppo: PPO
+var ppo_x: PPO
+var ppo_o: PPO
 var board = [0, 0, 0, 0, 0, 0, 0, 0, 0]
 var player = 1
 var waiting_for_input = false
@@ -10,39 +11,70 @@ var af = Activation.new()
 var ACTIVATIONS = af.get_functions()
 
 var actor_config = {
-	"learning_rate": 0.00001,
+	"learning_rate": 0.01,
 	"use_l2_regularization": false,
-	"l2_regularization_strength": 0.001
+	"l2_regularization_strength": 0.001,
+	"use_adam_optimizer": true,
+	"beta1": 0.9,
+	"beta2": 0.999,
+	"epsilon": 1e-7,
+	"early_stopping": false,  # Enable or disable early stopping
+	"patience": 25,          # Number of epochs with no improvement after which training will be stopped
+	"save_path": "res://earlystoptest.data",  # Path to save the best model
+	"smoothing_window": 10,  # Number of epochs to average for loss smoothing
+	"check_frequency": 50,    # Frequency of checking early stopping condition
+	"minimum_epochs": 1000,   # Minimum epochs before early stopping can trigger
+	"improvement_threshold": 0.005,  # Minimum relative improvement required to reset patience
+	# Gradient Clipping
+	"use_gradient_clipping": true,
+	"gradient_clip_value": 1.0,
+
+	# Weight Initialization
+	"initialization_type": "xavier"  # Options are "xavier" or "he"
 }
 
 var critic_config = {
-	"learning_rate": 0.00000001,
+	"learning_rate": 0.001,
 	"use_l2_regularization": false,
-	"l2_regularization_strength": 0.01
+	"l2_regularization_strength": 0.001,
+	"use_adam_optimizer": true,
+	"beta1": 0.9,
+	"beta2": 0.999,
+	"epsilon": 1e-7,
+	"early_stopping": false,  # Enable or disable early stopping
+	"patience": 25,          # Number of epochs with no improvement after which training will be stopped
+	"save_path": "res://earlystoptest.data",  # Path to save the best model
+	"smoothing_window": 10,  # Number of epochs to average for loss smoothing
+	"check_frequency": 50,    # Frequency of checking early stopping condition
+	"minimum_epochs": 1000,   # Minimum epochs before early stopping can trigger
+	"improvement_threshold": 0.005,  # Minimum relative improvement required to reset patience
+	# Gradient Clipping
+	"use_gradient_clipping": true,
+	"gradient_clip_value": 1.0,
+
+	# Weight Initialization
+	"initialization_type": "xavier"  # Options are "xavier" or "he"
 }
 
 var training_config = {
 	"gamma": 0.95,
 	"epsilon_clip": 0.2,
-	"update_steps": 80,
-	"max_memory_size": 20000,
-	"batch_size": 64,
-	"lambda": 0.95,
+	"update_steps": 100,
+	"max_memory_size": 200,
+	"batch_size": 32,
+	"lambda": 0.90,
 	"entropy_beta": 0.01,
 	"initial_learning_rate": 0.001,
 	"min_learning_rate": 0.0001,
 	"decay_rate": 0.75,
 	"clip_value": 0.2,
-	"target_network_update_steps": 1000,  # Steps to update target network
-	"learning_rate_schedule_type": "accuracy_based",  # Type of learning rate scheduling ("constant", "exponential_decay", "linear_decay", "step_decay", "accuracy_based")
-	"accuracy_threshold": 0.95,  # Threshold for accuracy-based learning rate adjustment
+	"target_network_update_steps": 1000,
 	"use_gae": true,
 	"use_entropy": true,
 	"use_target_network": true,
 	"use_gradient_clipping": true,
 	"use_learning_rate_scheduling": true
 }
-
 
 var x_wins: int = 0
 var o_wins: int = 0
@@ -51,26 +83,35 @@ var draws: int = 0
 @onready var input_timer: Timer = $Timer
 
 func _ready() -> void:
-	#print("Initializing PPO...")
-	ppo = PPO.new(actor_config, critic_config)
-	ppo.set_config(training_config)
-	# Actor network: 9 outputs corresponding to the 9 possible moves on the board
-	ppo.actor.add_layer(9)
-	ppo.actor.add_layer(12, ACTIVATIONS.SWISH)  # Hidden layer
-	ppo.actor.add_layer(9, ACTIVATIONS.SIGMOID)  # Output layer (9 possible actions)
+	# Initialize PPO agents for X and O
+	ppo_x = PPO.new(actor_config, critic_config)
+	ppo_x.set_config(training_config)
+	ppo_x.actor.add_layer(9)
+	ppo_x.actor.add_layer(12, ACTIVATIONS.TANH)
+	ppo_x.actor.add_layer(9, ACTIVATIONS.SIGMOID)
 
-	# Critic network: 1 output for value estimation
-	ppo.critic.add_layer(9)
-	ppo.critic.add_layer(12, ACTIVATIONS.RELU)  # Hidden layer
-	ppo.critic.add_layer(1, ACTIVATIONS.LINEAR)  # Output layer for value prediction
+	ppo_x.critic.add_layer(9)
+	ppo_x.critic.add_layer(12, ACTIVATIONS.TANH)
+	ppo_x.critic.add_layer(1, ACTIVATIONS.LINEAR)
 
-	#print("PPO initialized successfully.")
+	ppo_o = PPO.new(actor_config, critic_config)
+	ppo_o.set_config(training_config)
+	ppo_o.actor.add_layer(9)
+	ppo_o.actor.add_layer(12, ACTIVATIONS.TANH)
+	ppo_o.actor.add_layer(9, ACTIVATIONS.SIGMOID)
 
-	# Train the network before starting
-	#ppo.load("user://ppo_ttt.data")
+	ppo_o.critic.add_layer(9)
+	ppo_o.critic.add_layer(12, ACTIVATIONS.TANH)
+	ppo_o.critic.add_layer(1, ACTIVATIONS.LINEAR)
+
+	# Train the networks
 	train_networks()
-	ppo.save("user://ppo_ttt.data")
-	ppo.load("user://ppo_ttt.data")
+
+	ppo_x.save("user://ppo_x_ttt.data")
+	ppo_o.save("user://ppo_o_ttt.data")
+
+	ppo_x.load("user://ppo_x_ttt.data")
+	ppo_o.load("user://ppo_o_ttt.data")
 
 	print("Training complete. Ready to play!")
 	play_against_ai()
@@ -78,45 +119,54 @@ func _ready() -> void:
 	x_wins = 0
 	draws = 0
 
-func train_networks():
-	for i in range(100):
-		init_board()
-		train_game()
-
 func train_game():
 	var done = false
 	var previous_reward = 0.0
 	var current_reward: float
 
 	while not done:
-		var state = board.duplicate()  # Duplicate the board state before the action
+		var state = board.duplicate()
 
-		# Predict action based on the current state and player using PPO
-		var action: int = ppo.get_action(state)
+		# Choose action based on the current player
+		var action: int
+		if player == 1:
+			action = ppo_x.get_action(state)
+		else:
+			action = ppo_o.get_action(state)
 
 		if update_board(player, action):
 			current_reward = determine_value_training(board, player)
-			done = check_end_game()  # End the game if there's a win/loss/draw
+			done = check_end_game()
 
-			# Duplicate the board state after the action
 			var next_state = board.duplicate()
+			if player == 1:
+				ppo_x.keep(state, action, current_reward, next_state, done)
+			else:
+				ppo_o.keep(state, action, current_reward, next_state, done)
 
-			# Store the experience with pre-action and post-action states
-			ppo.keep(state, action, current_reward, next_state, done)
-
-			# Update previous reward for the current player
-			previous_reward = current_reward
 		else:
-			# Invalid move, punish player
-			current_reward = -0.75
-			done = true
-			previous_reward = current_reward
+			# Invalid move, punish player but don't end the game
+			current_reward = -0.5
+			if player == 1:
+				ppo_x.keep(state, action, current_reward, state, false)
+			else:
+				ppo_o.keep(state, action, current_reward, state, false)
+			continue
 
 		if not done:
 			player = switch_player(player)
 
-	# Ensure final state is processed and train PPO
-	ppo.train()
+	if player == 1:
+		ppo_x.train()
+	else:
+		ppo_o.train()
+
+	update_win_counts(has_winner(board))
+
+func train_networks():
+	for i in range(10000):
+		init_board()
+		train_game()
 
 func _input(event: InputEvent) -> void:
 	if event.is_action_pressed("1"):
@@ -154,26 +204,30 @@ func play_against_ai():
 			waiting_for_input = true
 			input_timer.start()
 			await input_timer.timeout
+			# Train PPO after player's move
+			if not check_end_game():
+				train_ppo_after_move()
 		else:
-			var action = ppo.get_action(board)
+			var action = ppo_o.get_action(board)
 			if update_board(player, action):
 				print_board()
 				if check_end_game():
 					await get_tree().create_timer(2.0).timeout
 					continue  # Start a new game
+				train_ppo_after_move()
 				player = switch_player(player)
-			else:
-				if update_board(player, randi() % 9):
-					print_board()
-					if check_end_game():
-						await get_tree().create_timer(2.0).timeout
-						continue  # Start a new game
-					player = switch_player(player)
+
+func train_ppo_after_move():
+	var reward = determine_value_training(board, player)
+	if player == 1:
+		ppo_x.train()
+	else:
+		ppo_o.train()
 
 func ai_move(ai_player_turn: int) -> int:
 	var valid_move = false
 	while not valid_move:
-		var action = ppo.get_action(board)
+		var action = ppo_x.get_action(board)
 		if update_board(ai_player_turn, action):
 			print_board()
 			valid_move = true
@@ -211,7 +265,7 @@ func determine_value_training(_board: Array, player_turn: int) -> float:
 		return 1.0 if player_turn == 1 else -1.0  # Positive reward for X, negative for O
 	elif result == 2:  # O wins
 		return 1.0 if player_turn == 2 else -1.0  # Positive reward for O, negative for X
-	return 0.1  # Draw
+	return 0.5  # Increased the reward for a draw to encourage more strategic play
 
 func switch_player(player: int) -> int:
 	return 2 if player == 1 else 1

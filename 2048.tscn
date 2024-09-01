@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://chfrywdurrpmo"]
+
+[ext_resource type="Script" path="res://2048.gd" id="1_8ynb5"]
+
+[node name="2048" type="Node2D"]
+script = ExtResource("1_8ynb5")
