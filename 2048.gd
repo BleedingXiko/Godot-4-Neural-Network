@@ -15,7 +15,7 @@ var config = {
 	"exploration_probability": 1.0,
 	"exploration_decreasing_decay": 0.001,
 	"min_exploration_probability": 0.1,
-	"exploration_strategy": "epsilon_greedy",
+	"exploration_strategy": "softmax",
 	"sampling_strategy": "sequential",
 	"discounted_factor": 0.99,
 	"decay_per_steps": 100,
@@ -41,7 +41,7 @@ var config = {
 	"improvement_threshold": 0.0001,
 	"use_gradient_clipping": true,
 	"gradient_clip_value": 1.0,
-	"initialization_type": "xavier"
+	"initialization_type": "he"
 }
 
 func _ready() -> void:
@@ -49,7 +49,7 @@ func _ready() -> void:
 	initialize_grid()
 	dqn = DDQN.new(config)
 	dqn.add_layer(GRID_SIZE * GRID_SIZE * 2 + 1)  # Input size: current grid, previous grid, and previous action
-	dqn.add_layer(86, dqn.neural_network.ACTIVATIONS.RELU)  # Hidden layer
+	dqn.add_layer(86, dqn.neural_network.ACTIVATIONS.LEAKY_RELU)  # Hidden layer
 	dqn.add_layer(4, dqn.neural_network.ACTIVATIONS.SIGMOID)  # Output layer: 4 possible actions (up, down, left, right)
 
 	# Optionally load a pre-trained model

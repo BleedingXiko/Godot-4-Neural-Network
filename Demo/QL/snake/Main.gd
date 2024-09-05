@@ -30,7 +30,7 @@ var dqn_config = {
 	"exploration_decreasing_decay": 0.00005,
 	"min_exploration_probability": 0.05,
 	"exploration_strategy": "epsilon_greedy",
-	"sampling_strategy": "sequential",
+	"sampling_strategy": "random",
 	"discounted_factor": 0.95,
 	"decay_per_steps": 100,
 	"use_replay": false,
@@ -68,7 +68,7 @@ func _ready():
 	dqn.add_layer(33)  # Adjust for time series input (current + previous)
 	dqn.add_layer(46, ACTIVATIONS.ELU)
 	dqn.add_layer(28, ACTIVATIONS.ELU)
-	dqn.add_layer(4, ACTIVATIONS.SIGMOID)  # 4 possible actions (up, down, left, right)
+	dqn.add_layer(4, ACTIVATIONS.LINEAR)  # 4 possible actions (up, down, left, right)
 	
 	# Train the agent
 	for i in range(1000):  # Adjust the number of training episodes as needed

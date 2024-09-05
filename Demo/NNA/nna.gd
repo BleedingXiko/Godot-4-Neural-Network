@@ -3,39 +3,37 @@ extends Node2D
 var nnas: NeuralNetworkAdvanced
 
 var config = {
-	"learning_rate": 0.0001,
+	"learning_rate": 0.00001,
 	"use_l2_regularization": false,
 	"l2_regularization_strength": 0.001,
 	"use_adam_optimizer": true,
 	"beta1": 0.9,
 	"beta2": 0.999,
 	"epsilon": 1e-7,
-	"early_stopping": true,  # Enable or disable early stopping
-	"patience": 50,          # Number of epochs with no improvement after which training will be stopped
+	"early_stopping": false,  # Enable or disable early stopping
+	"patience": 100,          # Number of epochs with no improvement after which training will be stopped
 	"save_path": "res://earlystoptest.data",  # Path to save the best model
 	"smoothing_window": 10,  # Number of epochs to average for loss smoothing
 	"check_frequency": 50,    # Frequency of checking early stopping condition
 	"minimum_epochs": 1000,   # Minimum epochs before early stopping can trigger
 	"improvement_threshold": 0.005,  # Minimum relative improvement required to reset patience
 	# Gradient Clipping
-	"use_gradient_clipping": false,
+	"use_gradient_clipping": true,
 	"gradient_clip_value": 1.0,
 
 	# Weight Initialization
 	"initialization_type": "he",  # Options are "xavier" or "he"
-	"use_batch_normalization": true
 }
 
 func _ready() -> void:
 	nnas = NeuralNetworkAdvanced.new(config)
 	nnas.add_layer(3)
-	nnas.add_layer(6, nnas.ACTIVATIONS.RELU)
-	nnas.add_layer(3, nnas.ACTIVATIONS.RELU)
+	nnas.add_layer(6, nnas.ACTIVATIONS.LEAKY_RELU)
 	nnas.add_layer(1, nnas.ACTIVATIONS.LINEAR)
 	#nnas.load(nnas.save_path)
 	
 	#
-	for i in range(6000):
+	for i in range(600):
 		nnas.train([1.0, 2.0, 3.0], [6.0])
 		nnas.train([4.0, 5.0, 6.0], [15.0])
 		nnas.train([7.0, 8.0, 9.0], [24.0])

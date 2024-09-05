@@ -25,13 +25,13 @@ var config = {
 	"update_target_every_steps": 1000,
 	"memory_capacity": 256,
 	"batch_size": 25,
-	"learning_rate": 0.00005,
-	"use_l2_regularization": true,
-	"l2_regularization_strength": 1,
-	"use_adam_optimizer": true,
+	"learning_rate": 0.0000001,
+	"use_l2_regularization": false,
+	"l2_regularization_strength": 0.01,
+	"use_adam_optimizer": false,
 	"beta1": 0.9,
 	"beta2": 0.999,
-	"epsilon": 1e-6,
+	"epsilon": 1e-4,
 	"early_stopping": false,
 	"patience": 15,
 	"save_path": "res://dqn_snake.data",
@@ -41,7 +41,8 @@ var config = {
 	"improvement_threshold": 0.00005,
 	"use_gradient_clipping": true,
 	"gradient_clip_value": 0.3,
-	"initialization_type": "xavier",
+	"initialization_type": "he",
+	"loss_function_type": "mse",
 }
 
 var x_wins: int = 0
@@ -54,23 +55,21 @@ func _ready() -> void:
 	# Initialize agents for X and O
 	qt_x = DDQN.new(config)
 	qt_x.add_layer(9)
-	qt_x.add_layer(18, ACTIVATIONS.SIGMOID)
-	qt_x.add_layer(10, ACTIVATIONS.SIGMOID)
-	qt_x.add_layer(9, ACTIVATIONS.SIGMOID)
+	qt_x.add_layer(28, ACTIVATIONS.RELU)
+	qt_x.add_layer(9, ACTIVATIONS.LINEAR)
 
 	qt_o = DDQN.new(config)
 	qt_o.add_layer(9)
-	qt_o.add_layer(16, ACTIVATIONS.SIGMOID)
-	qt_o.add_layer(8, ACTIVATIONS.SIGMOID)
-	qt_o.add_layer(9, ACTIVATIONS.SIGMOID)
+	qt_o.add_layer(19, ACTIVATIONS.RELU)
+	qt_o.add_layer(9, ACTIVATIONS.LINEAR)
 	
-	#qt_x.load("user://ddqnet_x_ttt.data", config)
-	#qt_o.load("user://ddqnet_o_ttt.data", config)
+	#qt_x.load("user://ddqnet_x_ttt2.data", config)
+	#qt_o.load("user://ddqnet_o_ttt2.data", config)
 
 	train_networks()
 
-	$VisualizeNet.visualize(qt_x.neural_network)
-	$VisualizeNet2.visualize(qt_o.neural_network)
+	#$VisualizeNet.visualize(qt_x.neural_network)
+	#$VisualizeNet2.visualize(qt_o.neural_network)
 	qt_x.save("user://ddqnet_x_ttt2.data")
 	qt_o.save("user://ddqnet_o_ttt2.data")
 
@@ -127,7 +126,7 @@ func train_game():
 	update_win_counts(has_winner(board))
 
 func train_networks():
-	for i in range(1000):
+	for i in range(500):
 		init_board()
 		train_game()
 
@@ -223,9 +222,9 @@ func determine_value_training(_board: Array, player_turn: int) -> float:
 	var result = has_winner(_board)
 
 	if result == 1:  # X wins
-		return 2.0 if player_turn == 1 else -5.0  # Positive reward for X, negative for O
+		return 1.0 if player_turn == 1 else -1.0  # Positive reward for X, negative for O
 	elif result == 2:  # O wins
-		return 2.0 if player_turn == 2 else -5.0  # Positive reward for O, negative for X
+		return 1.0 if player_turn == 2 else -1.0  # Positive reward for O, negative for X
 	return 0.1  # Increased the reward for a draw to encourage more strategic play
 
 func switch_player(player: int) -> int:

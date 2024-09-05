@@ -88,7 +88,7 @@ func get_action(state: Array) -> int:
 		#print("NaN detected in raw output!")
 		return 0  # Return a default action to avoid crash
 
-	var probabilities: Array = softmax(raw_output)  # Apply softmax to convert to probabilities
+	var probabilities: Array = raw_output  # Apply softmax to convert to probabilities
 	#print("Probabilities after softmax: ", probabilities)
 	if check_for_nan(probabilities):
 		print("NaN detected in probabilities!")

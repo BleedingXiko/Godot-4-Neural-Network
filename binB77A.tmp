@@ -1,0 +1,13 @@
+[gd_scene load_steps=3 format=3 uid="uid://b18lu6cqki44y"]
+
+[ext_resource type="Script" path="res://bin_flip.gd" id="1_csgay"]
+[ext_resource type="PackedScene" uid="uid://c4hm7rksuae77" path="res://addons/neural_net/Scripts/Visual/VisualizeNet.tscn" id="2_wot2i"]
+
+[node name="BinFlip" type="Node2D"]
+script = ExtResource("1_csgay")
+
+[node name="VisualizeNet" parent="." instance=ExtResource("2_wot2i")]
+position = Vector2(180, 129)
+
+[node name="VisualizeNet2" parent="." instance=ExtResource("2_wot2i")]
+position = Vector2(686, 147)

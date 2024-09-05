@@ -11,29 +11,31 @@ var q_network_config = {
 	"exploration_probability": 1.0,
 	"exploration_decreasing_decay": 0.01,
 	"min_exploration_probability": 0.1,
-	"exploration_strategy": "epsilon_greedy",
-	"sampling_strategy": "sequential",
+	"exploration_strategy": "softmax",
+	"sampling_strategy": "random",
 	"discounted_factor": 0.9,
 	"decay_per_steps": 100,
-	"use_replay": false,
+	"use_replay": true,
 	"is_learning": true,
-	"use_target_network": false,
-	"memory_capacity": 1024,
-	"batch_size": 16,
-	"learning_rate": 0.05,
+	"use_target_network": true,
+	"update_target_every_steps": 100,
+	"memory_capacity": 32,
+	"batch_size": 8,
+	"learning_rate": 0.000005,
 	"l2_regularization_strength": 0.001,
 	"use_l2_regularization": false,
 	"use_adam_optimizer": true,
 	"beta1": 0.9,
 	"beta2": 0.999,
-	"epsilon": 1e-7,
+	"epsilon": 1e-5,
 	"early_stopping": false,  # Enable or disable early stopping
 	"patience": 500,          # Number of epochs with no improvement after which training will be stopped
 	"save_path": "res://earlystoptestbinflip.data",  # Path to save the best model
 	"smoothing_window": 10,  # Number of epochs to average for loss smoothing
 	"check_frequency": 50,    # Frequency of checking early stopping condition
 	"minimum_epochs": 1000,   # Minimum epochs before early stopping can trigger
-	"improvement_threshold": 0.005  # Minimum relative improvement required to reset patience
+	"improvement_threshold": 0.005,  # Minimum relative improvement required to reset patience
+	"loss_function_type": "mse",
 }
 
 func _ready():
@@ -42,11 +44,11 @@ func _ready():
 	randomize()
 	q_network = DDQN.new(q_network_config)
 	q_network.add_layer(3)  # Input layer: 3 bits
-	q_network.add_layer(5, ACTIVATIONS.RELU)  # Hidden layer
-	q_network.add_layer(3, ACTIVATIONS.SIGMOID)  # Output layer: 3 possible actions (flip each bit)
+	q_network.add_layer(8, ACTIVATIONS.SELU)  # Hidden layer
+	q_network.add_layer(3, ACTIVATIONS.LINEAR)  # Output layer: 3 possible actions (flip each bit)
 	#q_network.load(q_network.neural_network.save_path)
 	$VisualizeNet.visualize(q_network.neural_network)
-	for i in range(8):
+	for i in range(50):
 		train_network()
 	play_binary_counter()
 

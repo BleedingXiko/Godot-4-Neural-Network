@@ -6,7 +6,7 @@ var nnas: NeuralNetworkAdvanced
 @onready var output: ColorRect = $output
 
 var config = {
-	"learning_rate": 0.0000005,
+	"learning_rate": 0.00000001,
 	"use_l2_regularization": false,
 	"l2_regularization_strength": 0.001,
 	"use_adam_optimizer": true,
@@ -21,8 +21,9 @@ var config = {
 	"save_path": "res://nn.best.data",
 	
 	# Gradient Clipping
-	"use_gradient_clipping": false,
-	"gradient_clip_value": 1.0,
+	"use_gradient_clipping": true,
+	"gradient_clip_value": 0.5,
+	"loss_function_type": "mse",
 
 	# Weight Initialization
 	"initialization_type": "xavier-"  # Options are "xavier" or "he"
@@ -53,7 +54,7 @@ func _ready() -> void:
 	# Randomly choose the number of hidden layers (between 1 and 3)
 	var num_hidden_layers = randi_range(1, 3)
 
-	nnas.add_layer(6, nnas.ACTIVATIONS.SIGMOID)
+	nnas.add_layer(6, nnas.ACTIVATIONS.LEAKY_RELU)
 	#for i in range(num_hidden_layers):
 		## Randomly choose the number of neurons for this layer (between 1 and 10)
 		#var num_neurons = randi_range(3, 6)

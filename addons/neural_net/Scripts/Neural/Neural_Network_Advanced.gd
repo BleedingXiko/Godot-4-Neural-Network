@@ -52,6 +52,8 @@ var smoothing_window: int = 10  # Number of epochs to average over for smoothing
 var check_frequency: int = 5  # Frequency of checking for early stopping conditions
 var steps_completed: int = 0  # Total number of epochs/steps completed
 
+# Add this variable to hold the loss function type
+var loss_function_type: String = "mse"  # Default to MSE
 
 # Initialization function
 func _init(config: Dictionary):
@@ -73,39 +75,9 @@ func set_config(config: Dictionary):
 	check_frequency = config.get("check_frequency", check_frequency)
 	minimum_epochs = config.get("minimum_epochs", minimum_epochs)
 	improvement_threshold = config.get("improvement_threshold", improvement_threshold)
-
-	# Gradient Clipping Configuration
-	use_gradient_clipping = config.get("use_gradient_clipping", use_gradient_clipping)
 	gradient_clip_value = config.get("gradient_clip_value", gradient_clip_value)
-
-	# Weight Initialization Type
 	initialization_type = config.get("initialization_type", initialization_type)
-
-# Xavier initialization method for weights
-func init_xavier(matrix: Matrix, nodes_out: int, nodes_in: int):
-	var limit: float = sqrt(6.0 / (nodes_in + nodes_out))
-	for i in range(matrix.get_rows()):
-		for j in range(matrix.get_cols()):
-			var value = randf_range(-limit, limit)
-			matrix.set_at(i, j, value)
-
-# He initialization method for weights
-func init_he(matrix: Matrix, nodes_out: int, nodes_in: int):
-	var stddev: float = sqrt(2.0 / nodes_in)
-	for i in range(matrix.get_rows()):
-		for j in range(matrix.get_cols()):
-			var value = stddev * rand_normal()
-			matrix.set_at(i, j, value)
-
-# Function to generate a normally distributed random number using the Box-Muller transform
-func rand_normal(mean: float = 0.0, stddev: float = 1.0) -> float:
-	var u1 = randf()  # Random number in the range [0, 1)
-	var u2 = randf()  # Random number in the range [0, 1)
-	
-	var z0 = sqrt(-2.0 * log(u1)) * cos(2.0 * PI * u2)
-	# var z1 = sqrt(-2.0 * log(u1)) * sin(2.0 * PI * u2)  # Optional second normal value
-	
-	return z0 * stddev + mean
+	loss_function_type = config.get("loss_function_type", loss_function_type)  # Add loss function to config
 
 # Function to add a new layer to the network
 func add_layer(nodes: int, activation: Dictionary = ACTIVATIONS.SIGMOID):
@@ -116,34 +88,28 @@ func add_layer(nodes: int, activation: Dictionary = ACTIVATIONS.SIGMOID):
 		weights.init(nodes, layer_structure[-1])
 		bias.init(nodes, 1)
 
-		# Initialize weights based on the selected initialization method
 		if initialization_type == "xavier":
-			init_xavier(weights, nodes, layer_structure[-1])
+			weights.init_xavier(nodes, layer_structure[-1])
 		elif initialization_type == "he":
-			init_he(weights, nodes, layer_structure[-1])
+			weights.init_he(nodes, layer_structure[-1])
 		else:
-			# Default random initialization
 			weights.rand()
-		bias.rand()  # Biases can be initialized randomly, typically with small values
 
-		# Store the layer's data
 		var layer_data: Dictionary = {
 			"weights": weights,
 			"bias": bias,
 			"activation": activation
 		}
 
-		# Initialize momentum and velocity for Adam optimizer if enabled
 		if use_adam_optimizer:
 			var momentum_weights: Matrix = Matrix.new()
-			momentum_weights.init(nodes, layer_structure[-1])  # Initialize with zeros
+			momentum_weights.init(nodes, layer_structure[-1])
 			var momentum_bias: Matrix = Matrix.new()
-			momentum_bias.init(nodes, 1)  # Initialize with zeros
-			
+			momentum_bias.init(nodes, 1)
 			var velocity_weights: Matrix = Matrix.new()
-			velocity_weights.init(nodes, layer_structure[-1])  # Initialize with zeros
+			velocity_weights.init(nodes, layer_structure[-1])
 			var velocity_bias: Matrix = Matrix.new()
-			velocity_bias.init(nodes, 1)  # Initialize with zeros
+			velocity_bias.init(nodes, 1)
 
 			var momentum: Dictionary = {
 				"weights": momentum_weights,
@@ -159,19 +125,6 @@ func add_layer(nodes: int, activation: Dictionary = ACTIVATIONS.SIGMOID):
 
 		network.push_back(layer_data)
 	layer_structure.append(nodes)
-
-# Function to update the loss history with the current loss value
-func update_loss_history(current_loss: float):
-	loss_history.append(current_loss)
-	if loss_history.size() > smoothing_window:
-		loss_history.remove_at(0)
-
-# Function to calculate the smoothed loss using a moving average
-func get_smoothed_loss() -> float:
-	var smoothed_loss: float = 0.0
-	for loss in loss_history:
-		smoothed_loss += loss
-	return smoothed_loss / loss_history.size()
 
 # Function to make predictions based on input data
 func predict(input_array: Array) -> Array:
@@ -213,26 +166,38 @@ func train(input_array: Array, target_array: Array) -> bool:
 		var layer_unactivated_output: Matrix = Matrix.transpose(unactivated_outputs[layer_index])
 
 		if layer_index == network.size() - 1:
-			var output_errors: Matrix = Matrix.subtract(expected_output, layer_outputs)
+			var output_errors: Matrix
+
+			# Select the appropriate error calculation based on the loss function type
+			match loss_function_type:
+				"mse":
+					output_errors = Matrix.mse_gradient(layer_outputs, expected_output)
+				"cross_entropy":
+					output_errors = Matrix.cross_entropy_gradient(layer_outputs, expected_output)
+				"binary_cross_entropy":
+					output_errors = Matrix.binary_cross_entropy_gradient(layer_outputs, expected_output)
+				"huber_loss":
+					output_errors = Matrix.huber_gradient(layer_outputs, expected_output)
+				_:
+					output_errors = Matrix.mse_gradient(layer_outputs, expected_output)
+
 			next_layer_errors = output_errors
 			var gradients: Matrix = Matrix.map(layer_outputs, layer.activation.derivative)
 			gradients = Matrix.multiply(gradients, output_errors)
 			gradients = Matrix.scalar(gradients, learning_rate)
-			
+
 			var weight_delta: Matrix
-			
+
 			if layer_index == 0:
 				weight_delta = Matrix.dot_product(gradients, Matrix.transpose(inputs))
 			else:
 				weight_delta = Matrix.dot_product(gradients, Matrix.transpose(outputs[layer_index - 1]))
-			
-			# Apply gradient clipping
+
 			if use_gradient_clipping:
-				gradients = clip_gradients(gradients)
-				weight_delta = clip_gradients(weight_delta)
-			
+				gradients = Matrix.clip_gradients(gradients, gradient_clip_value)
+				weight_delta = Matrix.clip_gradients(weight_delta, gradient_clip_value)
+
 			if use_adam_optimizer:
-				# Adam optimizer update
 				t += 1
 				var m: Dictionary = momentums[layer_index]
 				var v: Dictionary = velocities[layer_index]
@@ -240,26 +205,24 @@ func train(input_array: Array, target_array: Array) -> bool:
 				m.weights = Matrix.add(Matrix.scalar(m.weights, beta1), Matrix.scalar(weight_delta, 1 - beta1))
 				m.bias = Matrix.add(Matrix.scalar(m.bias, beta1), Matrix.scalar(gradients, 1 - beta1))
 				
-				v.weights = Matrix.add(Matrix.scalar(v.weights, beta2), Matrix.scalar(square_matrix(weight_delta), 1 - beta2))
-				v.bias = Matrix.add(Matrix.scalar(v.bias, beta2), Matrix.scalar(square_matrix(gradients), 1 - beta2))
+				v.weights = Matrix.add(Matrix.scalar(v.weights, beta2), Matrix.scalar(Matrix.square_matrix(weight_delta), 1 - beta2))
+				v.bias = Matrix.add(Matrix.scalar(v.bias, beta2), Matrix.scalar(Matrix.square_matrix(gradients), 1 - beta2))
 				
-				var m_hat_weights = divide_matrix_by_scalar(m.weights, (1 - pow(beta1, t)))
-				var m_hat_bias = divide_matrix_by_scalar(m.bias, (1 - pow(beta1, t)))
+				var m_hat_weights = Matrix.divide_matrix_by_scalar(m.weights, (1 - pow(beta1, t)))
+				var m_hat_bias = Matrix.divide_matrix_by_scalar(m.bias, (1 - pow(beta1, t)))
 				
-				var v_hat_weights = divide_matrix_by_scalar(v.weights, (1 - pow(beta2, t)))
-				var v_hat_bias = divide_matrix_by_scalar(v.bias, (1 - pow(beta2, t)))
+				var v_hat_weights = Matrix.divide_matrix_by_scalar(v.weights, (1 - pow(beta2, t)))
+				var v_hat_bias = Matrix.divide_matrix_by_scalar(v.bias, (1 - pow(beta2, t)))
 				
-				# Update gradients and weights using Adam optimizer
-				weight_delta = multiply_elementwise(m_hat_weights, reciprocal(add_scalar_to_matrix(sqrt_matrix(v_hat_weights), epsilon)))
-				gradients = multiply_elementwise(m_hat_bias, reciprocal(add_scalar_to_matrix(sqrt_matrix(v_hat_bias), epsilon)))
-			
-			# Update weights and biases with L2 Regularization
+				weight_delta = Matrix.multiply(m_hat_weights, Matrix.reciprocal(Matrix.add_scalar_to_matrix(Matrix.sqrt_matrix(v_hat_weights), epsilon)))
+				gradients = Matrix.multiply(m_hat_bias, Matrix.reciprocal(Matrix.add_scalar_to_matrix(Matrix.sqrt_matrix(v_hat_bias), epsilon)))
+
 			if use_l2_regularization:
 				var l2_penalty_weights: Matrix = Matrix.scalar(layer.weights, l2_regularization_strength)
 				var l2_penalty_bias: Matrix = Matrix.scalar(layer.bias, l2_regularization_strength)
 				weight_delta = Matrix.subtract(weight_delta, l2_penalty_weights)
 				gradients = Matrix.subtract(gradients, l2_penalty_bias)
-			
+
 			network[layer_index].weights = Matrix.add(layer.weights, weight_delta)
 			network[layer_index].bias = Matrix.add(layer.bias, gradients)
 		else:
@@ -277,14 +240,12 @@ func train(input_array: Array, target_array: Array) -> bool:
 			else:
 				inputs_t = Matrix.transpose(inputs)
 			var weight_delta = Matrix.dot_product(hidden_gradient, inputs_t)
-			
-			# Apply gradient clipping
+
 			if use_gradient_clipping:
-				hidden_gradient = clip_gradients(hidden_gradient)
-				weight_delta = clip_gradients(weight_delta)
-			
+				hidden_gradient = Matrix.clip_gradients(hidden_gradient, gradient_clip_value)
+				weight_delta = Matrix.clip_gradients(weight_delta, gradient_clip_value)
+
 			if use_adam_optimizer:
-				# Adam optimizer update
 				t += 1
 				var m: Dictionary = momentums[layer_index]
 				var v: Dictionary = velocities[layer_index]
@@ -292,31 +253,40 @@ func train(input_array: Array, target_array: Array) -> bool:
 				m.weights = Matrix.add(Matrix.scalar(m.weights, beta1), Matrix.scalar(weight_delta, 1 - beta1))
 				m.bias = Matrix.add(Matrix.scalar(m.bias, beta1), Matrix.scalar(hidden_gradient, 1 - beta1))
 				
-				v.weights = Matrix.add(Matrix.scalar(v.weights, beta2), Matrix.scalar(square_matrix(weight_delta), 1 - beta2))
-				v.bias = Matrix.add(Matrix.scalar(v.bias, beta2), Matrix.scalar(square_matrix(hidden_gradient), 1 - beta2))
+				v.weights = Matrix.add(Matrix.scalar(v.weights, beta2), Matrix.scalar(Matrix.square_matrix(weight_delta), 1 - beta2))
+				v.bias = Matrix.add(Matrix.scalar(v.bias, beta2), Matrix.scalar(Matrix.square_matrix(hidden_gradient), 1 - beta2))
 				
-				var m_hat_weights = divide_matrix_by_scalar(m.weights, (1 - pow(beta1, t)))
-				var m_hat_bias = divide_matrix_by_scalar(m.bias, (1 - pow(beta1, t)))
+				var m_hat_weights = Matrix.divide_matrix_by_scalar(m.weights, (1 - pow(beta1, t)))
+				var m_hat_bias = Matrix.divide_matrix_by_scalar(m.bias, (1 - pow(beta1, t)))
 				
-				var v_hat_weights = divide_matrix_by_scalar(v.weights, (1 - pow(beta2, t)))
-				var v_hat_bias = divide_matrix_by_scalar(v.bias, (1 - pow(beta2, t)))
-				
-				# Update gradients and weights using Adam optimizer
-				weight_delta = multiply_elementwise(m_hat_weights, reciprocal(add_scalar_to_matrix(sqrt_matrix(v_hat_weights), epsilon)))
-				hidden_gradient = multiply_elementwise(m_hat_bias, reciprocal(add_scalar_to_matrix(sqrt_matrix(v_hat_bias), epsilon)))
-			
-			# Update weights and biases with L2 Regularization
+				var v_hat_weights = Matrix.divide_matrix_by_scalar(v.weights, (1 - pow(beta2, t)))
+				var v_hat_bias = Matrix.divide_matrix_by_scalar(v.bias, (1 - pow(beta2, t)))
+
+				weight_delta = Matrix.multiply(m_hat_weights, Matrix.reciprocal(Matrix.add_scalar_to_matrix(Matrix.sqrt_matrix(v_hat_weights), epsilon)))
+				hidden_gradient = Matrix.multiply(m_hat_bias, Matrix.reciprocal(Matrix.add_scalar_to_matrix(Matrix.sqrt_matrix(v_hat_bias), epsilon)))
+
 			if use_l2_regularization:
 				var l2_penalty_weights: Matrix = Matrix.scalar(layer.weights, l2_regularization_strength)
 				var l2_penalty_bias: Matrix = Matrix.scalar(layer.bias, l2_regularization_strength)
 				weight_delta = Matrix.subtract(weight_delta, l2_penalty_weights)
 				hidden_gradient = Matrix.subtract(hidden_gradient, l2_penalty_bias)
-			
+
 			network[layer_index].weights = Matrix.add(layer.weights, weight_delta)
 			network[layer_index].bias = Matrix.add(layer.bias, hidden_gradient)
 
-	# Calculate the loss for the current epoch
-	var loss: float = calculate_loss(targets, outputs[-1])
+	# Calculate the loss for the current epoch based on the selected loss function
+	var loss: float
+	match loss_function_type:
+		"mse":
+			loss = Matrix.mse_loss(targets, outputs[-1])
+		"cross_entropy":
+			loss = Matrix.cross_entropy_loss(targets, outputs[-1])
+		"binary_cross_entropy":
+			loss = Matrix.binary_cross_entropy_loss(targets, outputs[-1])
+		"huber_loss":
+			loss = Matrix.huber_loss(targets, outputs[-1])
+		_:
+			loss = Matrix.mse_loss(targets, outputs[-1])  # Default to MSE
 
 	# Update the loss history
 	loss_history.append(loss)
@@ -326,7 +296,6 @@ func train(input_array: Array, target_array: Array) -> bool:
 
 	# Early Stopping Logic
 	if early_stopping and steps_completed >= minimum_epochs:
-		# Check if the smoothed loss is an improvement over the best recorded loss
 		if best_loss == INF or (best_loss - smoothed_loss) / abs(best_loss) > improvement_threshold:
 			best_loss = smoothed_loss
 			epochs_without_improvement = 0
@@ -336,35 +305,13 @@ func train(input_array: Array, target_array: Array) -> bool:
 			epochs_without_improvement += 1
 			print("No significant improvement. Epochs without improvement:", epochs_without_improvement)
 
-		# Trigger early stopping if no improvement is observed for 'patience' epochs
 		if epochs_without_improvement >= patience:
 			has_stopped = true
 			print("Early stopping triggered. Restoring best model saved with loss:", best_loss)
-			self.load(save_path)  # Restore the best model state
+			self.load(save_path)
 
 	steps_completed += 1
 	return not has_stopped  # Continue training if early stopping hasn't been triggered
-
-# Function to clip gradients to avoid extreme values
-func clip_gradients(gradients: Matrix) -> Matrix:
-	var clipped_gradients: Matrix = Matrix.new()
-	clipped_gradients.init(gradients.get_rows(), gradients.get_cols())
-	
-	for i in range(gradients.get_rows()):
-		for j in range(gradients.get_cols()):
-			var value = gradients.get_at(i, j)
-			clipped_gradients.set_at(i, j, clampf(value, -gradient_clip_value, gradient_clip_value))
-	
-	return clipped_gradients
-
-# Function to calculate the loss (Mean Squared Error)
-func calculate_loss(targets: Matrix, predictions: Matrix) -> float:
-	var error: Matrix = Matrix.subtract(targets, predictions)
-	var loss: float = 0.0
-	for i in range(error.get_rows()):
-		for j in range(error.get_cols()):
-			loss += pow(error.get_at(i, j), 2)
-	return loss / error.get_rows()
 
 # Function to calculate a moving average over a specified window size
 func calculate_moving_average(values: Array, window_size: int) -> float:
@@ -398,61 +345,6 @@ func copy() -> NeuralNetworkAdvanced:
 	new_network.layer_structure = layer_structure.duplicate()
 
 	return new_network
-
-# Utility functions for squaring, square rooting a matrix, adding a scalar, and dividing by a scalar
-func square_matrix(matrix: Matrix) -> Matrix:
-	var result: Matrix = Matrix.new()
-	result.init(matrix.get_rows(), matrix.get_cols())
-	for i in range(matrix.get_rows()):
-		for j in range(matrix.get_cols()):
-			var value = matrix.get_at(i, j)
-			result.set_at(i, j, value * value)
-	return result
-
-func sqrt_matrix(matrix: Matrix) -> Matrix:
-	var result: Matrix = Matrix.new()
-	result.init(matrix.get_rows(), matrix.get_cols())
-	for i in range(matrix.get_rows()):
-		for j in range(matrix.get_cols()):
-			var value = matrix.get_at(i, j)
-			result.set_at(i, j, sqrt(value))
-	return result
-
-# Add a scalar to each element in the matrix
-func add_scalar_to_matrix(matrix: Matrix, scalar: float) -> Matrix:
-	var result: Matrix = Matrix.new()
-	result.init(matrix.get_rows(), matrix.get_cols())
-	for i in range(matrix.get_rows()):
-		for j in range(matrix.get_cols()):
-			result.set_at(i, j, matrix.get_at(i, j) + scalar)
-	return result
-
-# Divide each element in the matrix by a scalar
-func divide_matrix_by_scalar(matrix: Matrix, scalar: float) -> Matrix:
-	var result: Matrix = Matrix.new()
-	result.init(matrix.get_rows(), matrix.get_cols())
-	for i in range(matrix.get_rows()):
-		for j in range(matrix.get_cols()):
-			result.set_at(i, j, matrix.get_at(i, j) / scalar)
-	return result
-
-# Element-wise multiplication of two matrices
-func multiply_elementwise(matrix1: Matrix, matrix2: Matrix) -> Matrix:
-	var result: Matrix = Matrix.new()
-	result.init(matrix1.get_rows(), matrix1.get_cols())
-	for i in range(matrix1.get_rows()):
-		for j in range(matrix1.get_cols()):
-			result.set_at(i, j, matrix1.get_at(i, j) * matrix2.get_at(i, j))
-	return result
-
-# Reciprocal of each element in the matrix
-func reciprocal(matrix: Matrix) -> Matrix:
-	var result: Matrix = Matrix.new()
-	result.init(matrix.get_rows(), matrix.get_cols())
-	for i in range(matrix.get_rows()):
-		for j in range(matrix.get_cols()):
-			result.set_at(i, j, 1.0 / matrix.get_at(i, j))
-	return result
 
 # Function to get input data from RayCasts (specific to a certain application)
 func get_inputs_from_raycasts() -> Array:

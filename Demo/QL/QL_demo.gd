@@ -25,7 +25,7 @@ var q_table_config = {
 	"exploration_parameter": 0.3,
 	"min_exploration_probability": 0.02,
 	"discounted_factor": 0.95,
-	"learning_rate": 0.05,
+	"learning_rate": 0.1,
 	"decay_per_steps": 100,
 	"max_state_value": 2,
 	"random_weights": false,

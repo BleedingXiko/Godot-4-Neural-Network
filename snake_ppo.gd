@@ -28,13 +28,47 @@ var ACTIVATIONS = af.get_functions()
 var actor_config = {
 	"learning_rate": 0.001,
 	"use_l2_regularization": false,
-	"l2_regularization_strength": 0.001
+	"l2_regularization_strength": 0.001,
+	"use_adam_optimizer": true,
+	"beta1": 0.9,
+	"beta2": 0.999,
+	"epsilon": 1e-7,
+	"early_stopping": true,  # Enable or disable early stopping
+	"patience": 50,          # Number of epochs with no improvement after which training will be stopped
+	"save_path": "res://earlystoptestaa.data",  # Path to save the best model
+	"smoothing_window": 10,  # Number of epochs to average for loss smoothing
+	"check_frequency": 50,    # Frequency of checking early stopping condition
+	"minimum_epochs": 1000,   # Minimum epochs before early stopping can trigger
+	"improvement_threshold": 0.005,  # Minimum relative improvement required to reset patience
+	# Gradient Clipping
+	"use_gradient_clipping": false,
+	"gradient_clip_value": 1.0,
+
+	# Weight Initialization
+	"initialization_type": "he",  # Options are "xavier" or "he"
 }
 
 var critic_config = {
-	"learning_rate": 0.001,
+	"learning_rate": 0.0001,
 	"use_l2_regularization": false,
-	"l2_regularization_strength": 0.01
+	"l2_regularization_strength": 0.001,
+	"use_adam_optimizer": true,
+	"beta1": 0.9,
+	"beta2": 0.999,
+	"epsilon": 1e-7,
+	"early_stopping": true,  # Enable or disable early stopping
+	"patience": 50,          # Number of epochs with no improvement after which training will be stopped
+	"save_path": "res://earlystoptestcc.data",  # Path to save the best model
+	"smoothing_window": 10,  # Number of epochs to average for loss smoothing
+	"check_frequency": 50,    # Frequency of checking early stopping condition
+	"minimum_epochs": 1000,   # Minimum epochs before early stopping can trigger
+	"improvement_threshold": 0.005,  # Minimum relative improvement required to reset patience
+	# Gradient Clipping
+	"use_gradient_clipping": false,
+	"gradient_clip_value": 1.0,
+
+	# Weight Initialization
+	"initialization_type": "he",  # Options are "xavier" or "he"
 }
 
 var training_config = {
@@ -70,7 +104,7 @@ func _ready():
 	ppo.set_config(training_config)
 	ppo.actor.add_layer(5 * 5 * 2)  # Adjust for current + previous state
 	ppo.actor.add_layer(43, ACTIVATIONS.TANH)
-	ppo.actor.add_layer(4, ACTIVATIONS.SIGMOID)  # Using SIGMOID activation for 4 possible actions (up, down, left, right)
+	ppo.actor.add_layer(4, ACTIVATIONS.SOFTMAX)  # Using SIGMOID activation for 4 possible actions (up, down, left, right)
 
 	ppo.critic.add_layer(5 * 5 * 2)  # Adjust for current + previous state
 	ppo.critic.add_layer(32, ACTIVATIONS.TANH)
@@ -79,7 +113,7 @@ func _ready():
 	
 	#ppo.load("res://ppo_snake.data")
 	# Train the agent
-	for i in range(250):  # Adjust the number of training episodes as needed
+	for i in range(10000):  # Adjust the number of training episodes as needed
 		print("Training episode:", i + 1)
 		run_training_episode()
 
