@@ -1,0 +1,13 @@
+[gd_scene load_steps=2 format=3 uid="uid://b6txjqh844g0x"]
+
+[ext_resource type="Script" path="res://sinusoidal.gd" id="1_x4146"]
+
+[node name="Node2D" type="Node2D"]
+script = ExtResource("1_x4146")
+
+[node name="Label" type="Label" parent="."]
+offset_left = 262.0
+offset_top = 108.0
+offset_right = 302.0
+offset_bottom = 131.0
+text = "gdsg"

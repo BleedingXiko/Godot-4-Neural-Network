@@ -1,0 +1,13 @@
+[gd_scene load_steps=3 format=3 uid="uid://syxltoho60kj"]
+
+[ext_resource type="Script" path="res://node_2d.gd" id="1_j1dwe"]
+[ext_resource type="PackedScene" uid="uid://c4hm7rksuae77" path="res://addons/neural_net/Scripts/Visual/VisualizeNet.tscn" id="2_dwja6"]
+
+[node name="Node2D" type="Node2D"]
+script = ExtResource("1_j1dwe")
+
+[node name="VisualizeNet" parent="." instance=ExtResource("2_dwja6")]
+position = Vector2(208, 142)
+
+[node name="VisualizeNet2" parent="." instance=ExtResource("2_dwja6")]
+position = Vector2(697, 145)

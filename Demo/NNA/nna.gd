@@ -18,7 +18,7 @@ var config = {
 	"minimum_epochs": 1000,   # Minimum epochs before early stopping can trigger
 	"improvement_threshold": 0.005,  # Minimum relative improvement required to reset patience
 	# Gradient Clipping
-	"use_gradient_clipping": true,
+	"use_gradient_clipping": false,
 	"gradient_clip_value": 1.0,
 
 	# Weight Initialization
@@ -28,7 +28,7 @@ var config = {
 func _ready() -> void:
 	nnas = NeuralNetworkAdvanced.new(config)
 	nnas.add_layer(3)
-	nnas.add_layer(6, nnas.ACTIVATIONS.LEAKY_RELU)
+	nnas.add_layer(6, nnas.ACTIVATIONS.RELU)
 	nnas.add_layer(1, nnas.ACTIVATIONS.LINEAR)
 	#nnas.load(nnas.save_path)
 	

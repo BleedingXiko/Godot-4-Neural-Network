@@ -19,13 +19,13 @@ var config = {
 	"sampling_strategy": "sequential",
 	"discounted_factor": 0.98,
 	"decay_per_steps": 250,
-	"use_replay": true,
+	"use_replay": false,
 	"is_learning": true,
 	"use_target_network": true,
 	"update_target_every_steps": 1000,
 	"memory_capacity": 256,
 	"batch_size": 25,
-	"learning_rate": 0.0000001,
+	"learning_rate": 0.00000001,
 	"use_l2_regularization": false,
 	"l2_regularization_strength": 0.01,
 	"use_adam_optimizer": false,
@@ -39,8 +39,8 @@ var config = {
 	"check_frequency": 10,
 	"minimum_epochs": 200,
 	"improvement_threshold": 0.00005,
-	"use_gradient_clipping": true,
-	"gradient_clip_value": 0.3,
+	"use_gradient_clipping": false,
+	"gradient_clip_value": 0.5,
 	"initialization_type": "he",
 	"loss_function_type": "mse",
 }
@@ -55,12 +55,12 @@ func _ready() -> void:
 	# Initialize agents for X and O
 	qt_x = DDQN.new(config)
 	qt_x.add_layer(9)
-	qt_x.add_layer(28, ACTIVATIONS.RELU)
+	qt_x.add_layer(12, ACTIVATIONS.RELU)
 	qt_x.add_layer(9, ACTIVATIONS.LINEAR)
 
 	qt_o = DDQN.new(config)
 	qt_o.add_layer(9)
-	qt_o.add_layer(19, ACTIVATIONS.RELU)
+	qt_o.add_layer(14, ACTIVATIONS.RELU)
 	qt_o.add_layer(9, ACTIVATIONS.LINEAR)
 	
 	#qt_x.load("user://ddqnet_x_ttt2.data", config)

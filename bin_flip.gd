@@ -21,10 +21,10 @@ var q_network_config = {
 	"update_target_every_steps": 100,
 	"memory_capacity": 32,
 	"batch_size": 8,
-	"learning_rate": 0.000005,
+	"learning_rate": 0.0001,
 	"l2_regularization_strength": 0.001,
 	"use_l2_regularization": false,
-	"use_adam_optimizer": true,
+	"use_adam_optimizer": false,
 	"beta1": 0.9,
 	"beta2": 0.999,
 	"epsilon": 1e-5,
@@ -36,6 +36,7 @@ var q_network_config = {
 	"minimum_epochs": 1000,   # Minimum epochs before early stopping can trigger
 	"improvement_threshold": 0.005,  # Minimum relative improvement required to reset patience
 	"loss_function_type": "mse",
+	"initialization_type": "he"
 }
 
 func _ready():
@@ -44,11 +45,11 @@ func _ready():
 	randomize()
 	q_network = DDQN.new(q_network_config)
 	q_network.add_layer(3)  # Input layer: 3 bits
-	q_network.add_layer(8, ACTIVATIONS.SELU)  # Hidden layer
-	q_network.add_layer(3, ACTIVATIONS.LINEAR)  # Output layer: 3 possible actions (flip each bit)
+	q_network.add_layer(6, ACTIVATIONS.RELU)  # Hidden layer
+	q_network.add_layer(3, ACTIVATIONS.TANH)  # Output layer: 3 possible actions (flip each bit)
 	#q_network.load(q_network.neural_network.save_path)
 	$VisualizeNet.visualize(q_network.neural_network)
-	for i in range(50):
+	for i in range(20):
 		train_network()
 	play_binary_counter()
 

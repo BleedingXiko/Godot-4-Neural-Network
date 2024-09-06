@@ -9,42 +9,41 @@ var ACTIVATIONS = af.get_functions()  # Dictionary of available activation funct
 var save_path: String = "res://nn.best.data"
 
 # Learning parameters
-var learning_rate: float = 0.01  # Controls the step size during optimization
-var use_l2_regularization: bool = false  # Flag to use L2 regularization to prevent overfitting
-var l2_regularization_strength: float = 0.001  # L2 regularization strength
-var use_adam_optimizer: bool = false  # Controls whether Adam optimizer is used
-var beta1: float = 0.9  # Exponential decay rate for the first moment estimate in Adam
-var beta2: float = 0.999  # Exponential decay rate for the second moment estimate in Adam
-var epsilon: float = 1e-7  # Small constant to prevent division by zero in Adam
+var learning_rate: float = 0.01  # Standard learning rate for SGD
+var use_l2_regularization: bool = false  # L2 regularization off by default
+var l2_regularization_strength: float = 0.001  # If L2 is enabled
+
+##TODO ADAM DOESNT WORK
+var use_adam_optimizer: bool = false  # Use SGD by default, not Adam
+var beta1: float = 0.9  # Adam's first moment decay rate (only used if Adam is enabled)
+var beta2: float = 0.999  # Adam's second moment decay rate
+var epsilon: float = 1e-7  # Adam's epsilon for numerical stability
 
 # Structure of the neural network layers
 var layer_structure = []
 
-# RayCasts used for obtaining input data (specific to a certain application)
-var raycasts: Array[RayCast2D]
-
-# Adam optimizer state variables
-var momentums: Array = []  # Store momentum values for Adam optimizer
-var velocities: Array = []  # Store velocity values for Adam optimizer
+# Adam optimizer state variables (only used if Adam is enabled)
+var momentums: Array = []  
+var velocities: Array = []  
 var t: int = 0  # Time step counter for Adam optimizer
 
 # Gradient clipping parameters
-var use_gradient_clipping: bool = true  # Enable or disable gradient clipping
-var gradient_clip_value: float = 1.0  # Maximum absolute value for gradients
+var use_gradient_clipping: bool = false  # Disabled by default, only enable if necessary
+var gradient_clip_value: float = 1.0  # Clipping value if enabled
 
 # Early stopping parameters
-var early_stopping: bool = true  # Flag to enable early stopping
+var early_stopping: bool = false  # Early stopping disabled by default
 var has_stopped: bool = false  # Flag indicating if early stopping has been triggered
-var minimum_epochs: int = 100  # Minimum epochs before early stopping can be considered
-var patience: int = 50  # Number of epochs to wait before stopping if no improvement
-var improvement_threshold: float = 0.005  # Relative improvement required to reset patience
+var minimum_epochs: int = 100  # Default number of minimum epochs if early stopping is enabled
+var patience: int = 50  # Default patience for early stopping if enabled
+var improvement_threshold: float = 0.005  # Threshold for improvement in early stopping
 
 # Variables to track progress for early stopping
 var best_loss: float = INF  # Best recorded loss
 var epochs_without_improvement: int = 0  # Counter for epochs without improvement
 
-# Initialization method for weights ("xavier" or "he")
-var initialization_type: String = "xavier"
+# Initialization method for weights
+var initialization_type: String = "random"  # Random initialization by default
 
 # Loss history tracking for smoothing and early stopping
 var loss_history: Array = []  # Array to store loss values for each epoch
@@ -101,29 +100,34 @@ func add_layer(nodes: int, activation: Dictionary = ACTIVATIONS.SIGMOID):
 			"activation": activation
 		}
 
+		# Initialize momentum for all optimizers
+		var momentum_weights: Matrix = Matrix.new()
+		var momentum_bias: Matrix = Matrix.new()
+		momentum_weights.init(nodes, layer_structure[-1])
+		momentum_bias.init(nodes, 1)
+
+		var momentum: Dictionary = {
+			"weights": momentum_weights,
+			"bias": momentum_bias
+		}
+		momentums.append(momentum)
+
+		# Initialize velocity only if using Adam optimizer
 		if use_adam_optimizer:
-			var momentum_weights: Matrix = Matrix.new()
-			momentum_weights.init(nodes, layer_structure[-1])
-			var momentum_bias: Matrix = Matrix.new()
-			momentum_bias.init(nodes, 1)
 			var velocity_weights: Matrix = Matrix.new()
-			velocity_weights.init(nodes, layer_structure[-1])
 			var velocity_bias: Matrix = Matrix.new()
+			velocity_weights.init(nodes, layer_structure[-1])
 			velocity_bias.init(nodes, 1)
 
-			var momentum: Dictionary = {
-				"weights": momentum_weights,
-				"bias": momentum_bias
-			}
 			var velocity: Dictionary = {
 				"weights": velocity_weights,
 				"bias": velocity_bias
 			}
 			
-			momentums.append(momentum)
 			velocities.append(velocity)
-
+		# Add the layer to the network
 		network.push_back(layer_data)
+
 	layer_structure.append(nodes)
 
 # Function to make predictions based on input data
@@ -136,7 +140,6 @@ func predict(input_array: Array) -> Array:
 		inputs = map
 	return Matrix.to_array(inputs)
 
-# Training function that adjusts weights and biases based on input and target data
 func train(input_array: Array, target_array: Array) -> bool:
 	if has_stopped:
 		return false
@@ -147,7 +150,8 @@ func train(input_array: Array, target_array: Array) -> bool:
 	var layer_inputs: Matrix = inputs
 	var outputs: Array[Matrix] = []  # Store activated outputs for each layer
 	var unactivated_outputs: Array[Matrix] = []  # Store unactivated outputs for each layer
-	
+
+	# Forward pass
 	for layer in network:
 		var product: Matrix = Matrix.dot_product(layer.weights, layer_inputs)
 		var sum: Matrix = Matrix.add(product, layer.bias)
@@ -155,20 +159,21 @@ func train(input_array: Array, target_array: Array) -> bool:
 		layer_inputs = map
 		outputs.append(map)
 		unactivated_outputs.append(sum)
-	
+
 	var expected_output: Matrix = targets
 	var next_layer_errors: Matrix
-	
-	# Backpropagation
+
+	# Increment t once per training step (persist across epochs)
+	t += 1
+
+	# Backward pass
 	for layer_index in range(network.size() - 1, -1, -1):
 		var layer: Dictionary = network[layer_index]
 		var layer_outputs: Matrix = outputs[layer_index]
 		var layer_unactivated_output: Matrix = Matrix.transpose(unactivated_outputs[layer_index])
 
-		if layer_index == network.size() - 1:
+		if layer_index == network.size() - 1:  # Output layer
 			var output_errors: Matrix
-
-			# Select the appropriate error calculation based on the loss function type
 			match loss_function_type:
 				"mse":
 					output_errors = Matrix.mse_gradient(layer_outputs, expected_output)
@@ -187,94 +192,122 @@ func train(input_array: Array, target_array: Array) -> bool:
 			gradients = Matrix.scalar(gradients, learning_rate)
 
 			var weight_delta: Matrix
-
 			if layer_index == 0:
 				weight_delta = Matrix.dot_product(gradients, Matrix.transpose(inputs))
 			else:
 				weight_delta = Matrix.dot_product(gradients, Matrix.transpose(outputs[layer_index - 1]))
 
+			# L2 regularization: Adding the regularization term to weight_delta
+			if use_l2_regularization:
+				var l2_penalty_weights: Matrix = Matrix.scalar(layer.weights, l2_regularization_strength)
+				weight_delta = Matrix.subtract(weight_delta, l2_penalty_weights)
+
+			# Gradient clipping (if enabled)
 			if use_gradient_clipping:
 				gradients = Matrix.clip_gradients(gradients, gradient_clip_value)
 				weight_delta = Matrix.clip_gradients(weight_delta, gradient_clip_value)
 
+			# Adam Optimizer Logic
 			if use_adam_optimizer:
-				t += 1
 				var m: Dictionary = momentums[layer_index]
 				var v: Dictionary = velocities[layer_index]
-				
+
+				# Update Adam's momentum (m) and velocity (v)
 				m.weights = Matrix.add(Matrix.scalar(m.weights, beta1), Matrix.scalar(weight_delta, 1 - beta1))
 				m.bias = Matrix.add(Matrix.scalar(m.bias, beta1), Matrix.scalar(gradients, 1 - beta1))
-				
+
 				v.weights = Matrix.add(Matrix.scalar(v.weights, beta2), Matrix.scalar(Matrix.square_matrix(weight_delta), 1 - beta2))
 				v.bias = Matrix.add(Matrix.scalar(v.bias, beta2), Matrix.scalar(Matrix.square_matrix(gradients), 1 - beta2))
-				
+
+				# Bias correction
 				var m_hat_weights = Matrix.divide_matrix_by_scalar(m.weights, (1 - pow(beta1, t)))
 				var m_hat_bias = Matrix.divide_matrix_by_scalar(m.bias, (1 - pow(beta1, t)))
-				
 				var v_hat_weights = Matrix.divide_matrix_by_scalar(v.weights, (1 - pow(beta2, t)))
 				var v_hat_bias = Matrix.divide_matrix_by_scalar(v.bias, (1 - pow(beta2, t)))
-				
+
+				# Update weights and biases using Adam's update rule
 				weight_delta = Matrix.multiply(m_hat_weights, Matrix.reciprocal(Matrix.add_scalar_to_matrix(Matrix.sqrt_matrix(v_hat_weights), epsilon)))
 				gradients = Matrix.multiply(m_hat_bias, Matrix.reciprocal(Matrix.add_scalar_to_matrix(Matrix.sqrt_matrix(v_hat_bias), epsilon)))
 
-			if use_l2_regularization:
-				var l2_penalty_weights: Matrix = Matrix.scalar(layer.weights, l2_regularization_strength)
-				var l2_penalty_bias: Matrix = Matrix.scalar(layer.bias, l2_regularization_strength)
-				weight_delta = Matrix.subtract(weight_delta, l2_penalty_weights)
-				gradients = Matrix.subtract(gradients, l2_penalty_bias)
+				# Apply the Adam update to the weights and biases
+				network[layer_index].weights = Matrix.subtract(layer.weights, weight_delta)
+				network[layer_index].bias = Matrix.subtract(layer.bias, gradients)
+			else:
+				# Fallback to SGD with Momentum (if Adam isn't being used)
+				var momentum_coefficient: float = 0.9
+				var m: Dictionary = momentums[layer_index]
 
-			network[layer_index].weights = Matrix.add(layer.weights, weight_delta)
-			network[layer_index].bias = Matrix.add(layer.bias, gradients)
-		else:
+				# Update momentum using the SGD momentum rule
+				m.weights = Matrix.add(Matrix.scalar(m.weights, momentum_coefficient), weight_delta)
+				m.bias = Matrix.add(Matrix.scalar(m.bias, momentum_coefficient), gradients)
+
+				# Use momentum to update weights and biases
+				network[layer_index].weights = Matrix.subtract(layer.weights, m.weights)
+				network[layer_index].bias = Matrix.subtract(layer.bias, m.bias)
+
+		else:  # Hidden layers (similar logic to output layer)
 			var weights_hidden_output_t = Matrix.transpose(network[layer_index + 1].weights)
 			var hidden_errors = Matrix.dot_product(weights_hidden_output_t, next_layer_errors)
 			next_layer_errors = hidden_errors
+
 			var hidden_gradient = Matrix.map(layer_outputs, layer.activation.derivative)
 			hidden_gradient = Matrix.multiply(hidden_gradient, hidden_errors)
 			hidden_gradient = Matrix.scalar(hidden_gradient, learning_rate)
-			
+
 			var inputs_t: Matrix
-			
 			if layer_index != 0:
 				inputs_t = Matrix.transpose(outputs[layer_index - 1])
 			else:
 				inputs_t = Matrix.transpose(inputs)
+
 			var weight_delta = Matrix.dot_product(hidden_gradient, inputs_t)
 
+			# L2 regularization for hidden layers
+			if use_l2_regularization:
+				var l2_penalty_weights_hidden: Matrix = Matrix.scalar(layer.weights, l2_regularization_strength)
+				weight_delta = Matrix.subtract(weight_delta, l2_penalty_weights_hidden)
+
+			# Gradient clipping (if enabled)
 			if use_gradient_clipping:
 				hidden_gradient = Matrix.clip_gradients(hidden_gradient, gradient_clip_value)
 				weight_delta = Matrix.clip_gradients(weight_delta, gradient_clip_value)
 
+			# Adam optimizer for hidden layers
 			if use_adam_optimizer:
-				t += 1
 				var m: Dictionary = momentums[layer_index]
 				var v: Dictionary = velocities[layer_index]
-				
+
 				m.weights = Matrix.add(Matrix.scalar(m.weights, beta1), Matrix.scalar(weight_delta, 1 - beta1))
 				m.bias = Matrix.add(Matrix.scalar(m.bias, beta1), Matrix.scalar(hidden_gradient, 1 - beta1))
-				
+
 				v.weights = Matrix.add(Matrix.scalar(v.weights, beta2), Matrix.scalar(Matrix.square_matrix(weight_delta), 1 - beta2))
 				v.bias = Matrix.add(Matrix.scalar(v.bias, beta2), Matrix.scalar(Matrix.square_matrix(hidden_gradient), 1 - beta2))
-				
+
 				var m_hat_weights = Matrix.divide_matrix_by_scalar(m.weights, (1 - pow(beta1, t)))
 				var m_hat_bias = Matrix.divide_matrix_by_scalar(m.bias, (1 - pow(beta1, t)))
-				
 				var v_hat_weights = Matrix.divide_matrix_by_scalar(v.weights, (1 - pow(beta2, t)))
 				var v_hat_bias = Matrix.divide_matrix_by_scalar(v.bias, (1 - pow(beta2, t)))
 
 				weight_delta = Matrix.multiply(m_hat_weights, Matrix.reciprocal(Matrix.add_scalar_to_matrix(Matrix.sqrt_matrix(v_hat_weights), epsilon)))
 				hidden_gradient = Matrix.multiply(m_hat_bias, Matrix.reciprocal(Matrix.add_scalar_to_matrix(Matrix.sqrt_matrix(v_hat_bias), epsilon)))
 
-			if use_l2_regularization:
-				var l2_penalty_weights: Matrix = Matrix.scalar(layer.weights, l2_regularization_strength)
-				var l2_penalty_bias: Matrix = Matrix.scalar(layer.bias, l2_regularization_strength)
-				weight_delta = Matrix.subtract(weight_delta, l2_penalty_weights)
-				hidden_gradient = Matrix.subtract(hidden_gradient, l2_penalty_bias)
+				# Apply Adam updates to the weights and biases
+				network[layer_index].weights = Matrix.subtract(layer.weights, weight_delta)
+				network[layer_index].bias = Matrix.subtract(layer.bias, hidden_gradient)
 
-			network[layer_index].weights = Matrix.add(layer.weights, weight_delta)
-			network[layer_index].bias = Matrix.add(layer.bias, hidden_gradient)
+			else:
+				# SGD with momentum for hidden layers
+				var momentum_coefficient: float = 0.9  # Momentum coefficient for SGD
+				var m: Dictionary = momentums[layer_index]
 
-	# Calculate the loss for the current epoch based on the selected loss function
+				m.weights = Matrix.add(Matrix.scalar(m.weights, momentum_coefficient), weight_delta)
+				m.bias = Matrix.add(Matrix.scalar(m.bias, momentum_coefficient), hidden_gradient)
+
+				# Use momentum to update weights and biases
+				network[layer_index].weights = Matrix.subtract(layer.weights, m.weights)
+				network[layer_index].bias = Matrix.subtract(layer.bias, m.bias)
+
+	# Early stopping logic
 	var loss: float
 	match loss_function_type:
 		"mse":
@@ -345,37 +378,6 @@ func copy() -> NeuralNetworkAdvanced:
 	new_network.layer_structure = layer_structure.duplicate()
 
 	return new_network
-
-# Function to get input data from RayCasts (specific to a certain application)
-func get_inputs_from_raycasts() -> Array:
-	assert(raycasts.size() != 0, "Cannot get inputs from RayCasts that are not set!")
-	
-	var _input_array: Array[float]
-	
-	for ray in raycasts:
-		if is_instance_valid(ray): _input_array.push_front(get_distance(ray))
-	
-	return _input_array
-
-# Function to make predictions based on RayCast input data (specific to a certain application)
-func get_prediction_from_raycasts(optional_val: Array = []) -> Array:
-	assert(raycasts.size() != 0, "Cannot get inputs from RayCasts that are not set!")
-	
-	var _array_ = get_inputs_from_raycasts()
-	_array_.append_array(optional_val)
-	return predict(_array_)
-
-# Function to get the distance from RayCast to the collision point
-func get_distance(_raycast: RayCast2D):
-	var distance: float = 0.0
-	if _raycast.is_colliding():
-		var origin: Vector2 = _raycast.global_transform.get_origin()
-		var collision: Vector2 = _raycast.get_collision_point()
-		
-		distance = origin.distance_to(collision)
-	else:
-		distance = sqrt((pow(_raycast.target_position.x, 2) + pow(_raycast.target_position.y, 2)))
-	return distance
 
 # Function to save the model to a file
 func save(path: String):
