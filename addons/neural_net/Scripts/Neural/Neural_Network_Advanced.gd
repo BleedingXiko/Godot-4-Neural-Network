@@ -172,6 +172,9 @@ func train(input_array: Array, target_array: Array) -> bool:
 		var layer_outputs: Matrix = outputs[layer_index]
 		var layer_unactivated_output: Matrix = Matrix.transpose(unactivated_outputs[layer_index])
 
+		var raw_gradients: Matrix
+		var raw_weight_delta: Matrix
+
 		if layer_index == network.size() - 1:  # Output layer
 			var output_errors: Matrix
 			match loss_function_type:
@@ -187,20 +190,25 @@ func train(input_array: Array, target_array: Array) -> bool:
 					output_errors = Matrix.mse_gradient(layer_outputs, expected_output)
 
 			next_layer_errors = output_errors
-			var gradients: Matrix = Matrix.map(layer_outputs, layer.activation.derivative)
-			gradients = Matrix.multiply(gradients, output_errors)
-			gradients = Matrix.scalar(gradients, learning_rate)
+			raw_gradients = Matrix.multiply(Matrix.map(layer_outputs, layer.activation.derivative), output_errors)
 
-			var weight_delta: Matrix
+			var inputs_t: Matrix
 			if layer_index == 0:
-				weight_delta = Matrix.dot_product(gradients, Matrix.transpose(inputs))
+				inputs_t = Matrix.transpose(inputs)
 			else:
-				weight_delta = Matrix.dot_product(gradients, Matrix.transpose(outputs[layer_index - 1]))
+				inputs_t = Matrix.transpose(outputs[layer_index - 1])
 
-			# L2 regularization: Adding the regularization term to weight_delta
+			raw_weight_delta = Matrix.dot_product(raw_gradients, inputs_t)
+
+			# Add L2 regularization to raw gradients if enabled
 			if use_l2_regularization:
 				var l2_penalty_weights: Matrix = Matrix.scalar(layer.weights, l2_regularization_strength)
-				weight_delta = Matrix.subtract(weight_delta, l2_penalty_weights)
+				raw_weight_delta = Matrix.add(raw_weight_delta, l2_penalty_weights)
+				# Note: For bias, typically no L2, but if desired, add similar for raw_gradients (bias grad)
+
+			# Scale by learning rate
+			var gradients = Matrix.scalar(raw_gradients, learning_rate)
+			var weight_delta = Matrix.scalar(raw_weight_delta, learning_rate)
 
 			# Gradient clipping (if enabled)
 			if use_gradient_clipping:
@@ -212,12 +220,16 @@ func train(input_array: Array, target_array: Array) -> bool:
 				var m: Dictionary = momentums[layer_index]
 				var v: Dictionary = velocities[layer_index]
 
-				# Update Adam's momentum (m) and velocity (v)
-				m.weights = Matrix.add(Matrix.scalar(m.weights, beta1), Matrix.scalar(weight_delta, 1 - beta1))
-				m.bias = Matrix.add(Matrix.scalar(m.bias, beta1), Matrix.scalar(gradients, 1 - beta1))
+				# Update Adam's momentum (m) and velocity (v) using raw gradients (but since lr is outside, use scaled)
+				# Note: Standard Adam applies to full grad (including lr? No, lr is in update.
+				# Adam computes m/v on grad, then update = lr * m_hat / (sqrt(v_hat) + eps)
+				# So feed raw_grad to m/v, then scale in update.
 
-				v.weights = Matrix.add(Matrix.scalar(v.weights, beta2), Matrix.scalar(Matrix.square_matrix(weight_delta), 1 - beta2))
-				v.bias = Matrix.add(Matrix.scalar(v.bias, beta2), Matrix.scalar(Matrix.square_matrix(gradients), 1 - beta2))
+				m.weights = Matrix.add(Matrix.scalar(m.weights, beta1), Matrix.scalar(raw_weight_delta, 1 - beta1))
+				m.bias = Matrix.add(Matrix.scalar(m.bias, beta1), Matrix.scalar(raw_gradients, 1 - beta1))
+
+				v.weights = Matrix.add(Matrix.scalar(v.weights, beta2), Matrix.scalar(Matrix.square_matrix(raw_weight_delta), 1 - beta2))
+				v.bias = Matrix.add(Matrix.scalar(v.bias, beta2), Matrix.scalar(Matrix.square_matrix(raw_gradients), 1 - beta2))
 
 				# Bias correction
 				var m_hat_weights = Matrix.divide_matrix_by_scalar(m.weights, (1 - pow(beta1, t)))
@@ -225,9 +237,9 @@ func train(input_array: Array, target_array: Array) -> bool:
 				var v_hat_weights = Matrix.divide_matrix_by_scalar(v.weights, (1 - pow(beta2, t)))
 				var v_hat_bias = Matrix.divide_matrix_by_scalar(v.bias, (1 - pow(beta2, t)))
 
-				# Update weights and biases using Adam's update rule
-				weight_delta = Matrix.multiply(m_hat_weights, Matrix.reciprocal(Matrix.add_scalar_to_matrix(Matrix.sqrt_matrix(v_hat_weights), epsilon)))
-				gradients = Matrix.multiply(m_hat_bias, Matrix.reciprocal(Matrix.add_scalar_to_matrix(Matrix.sqrt_matrix(v_hat_bias), epsilon)))
+				# Update with lr
+				weight_delta = Matrix.scalar(Matrix.multiply(m_hat_weights, Matrix.reciprocal(Matrix.add_scalar_to_matrix(Matrix.sqrt_matrix(v_hat_weights), epsilon))), learning_rate)
+				gradients = Matrix.scalar(Matrix.multiply(m_hat_bias, Matrix.reciprocal(Matrix.add_scalar_to_matrix(Matrix.sqrt_matrix(v_hat_bias), epsilon))), learning_rate)
 
 				# Apply the Adam update to the weights and biases
 				network[layer_index].weights = Matrix.subtract(layer.weights, weight_delta)
@@ -237,7 +249,7 @@ func train(input_array: Array, target_array: Array) -> bool:
 				var momentum_coefficient: float = 0.9
 				var m: Dictionary = momentums[layer_index]
 
-				# Update momentum using the SGD momentum rule
+				# Update momentum using the scaled deltas
 				m.weights = Matrix.add(Matrix.scalar(m.weights, momentum_coefficient), weight_delta)
 				m.bias = Matrix.add(Matrix.scalar(m.bias, momentum_coefficient), gradients)
 
@@ -245,14 +257,12 @@ func train(input_array: Array, target_array: Array) -> bool:
 				network[layer_index].weights = Matrix.subtract(layer.weights, m.weights)
 				network[layer_index].bias = Matrix.subtract(layer.bias, m.bias)
 
-		else:  # Hidden layers (similar logic to output layer)
+		else:  # Hidden layers
 			var weights_hidden_output_t = Matrix.transpose(network[layer_index + 1].weights)
 			var hidden_errors = Matrix.dot_product(weights_hidden_output_t, next_layer_errors)
 			next_layer_errors = hidden_errors
 
-			var hidden_gradient = Matrix.map(layer_outputs, layer.activation.derivative)
-			hidden_gradient = Matrix.multiply(hidden_gradient, hidden_errors)
-			hidden_gradient = Matrix.scalar(hidden_gradient, learning_rate)
+			raw_gradients = Matrix.multiply(Matrix.map(layer_outputs, layer.activation.derivative), hidden_errors)
 
 			var inputs_t: Matrix
 			if layer_index != 0:
@@ -260,12 +270,16 @@ func train(input_array: Array, target_array: Array) -> bool:
 			else:
 				inputs_t = Matrix.transpose(inputs)
 
-			var weight_delta = Matrix.dot_product(hidden_gradient, inputs_t)
+			raw_weight_delta = Matrix.dot_product(raw_gradients, inputs_t)
 
-			# L2 regularization for hidden layers
+			# Add L2 regularization to raw gradients if enabled
 			if use_l2_regularization:
 				var l2_penalty_weights_hidden: Matrix = Matrix.scalar(layer.weights, l2_regularization_strength)
-				weight_delta = Matrix.subtract(weight_delta, l2_penalty_weights_hidden)
+				raw_weight_delta = Matrix.add(raw_weight_delta, l2_penalty_weights_hidden)
+
+			# Scale by learning rate
+			var hidden_gradient = Matrix.scalar(raw_gradients, learning_rate)
+			var weight_delta = Matrix.scalar(raw_weight_delta, learning_rate)
 
 			# Gradient clipping (if enabled)
 			if use_gradient_clipping:
@@ -277,19 +291,19 @@ func train(input_array: Array, target_array: Array) -> bool:
 				var m: Dictionary = momentums[layer_index]
 				var v: Dictionary = velocities[layer_index]
 
-				m.weights = Matrix.add(Matrix.scalar(m.weights, beta1), Matrix.scalar(weight_delta, 1 - beta1))
-				m.bias = Matrix.add(Matrix.scalar(m.bias, beta1), Matrix.scalar(hidden_gradient, 1 - beta1))
+				m.weights = Matrix.add(Matrix.scalar(m.weights, beta1), Matrix.scalar(raw_weight_delta, 1 - beta1))
+				m.bias = Matrix.add(Matrix.scalar(m.bias, beta1), Matrix.scalar(raw_gradients, 1 - beta1))
 
-				v.weights = Matrix.add(Matrix.scalar(v.weights, beta2), Matrix.scalar(Matrix.square_matrix(weight_delta), 1 - beta2))
-				v.bias = Matrix.add(Matrix.scalar(v.bias, beta2), Matrix.scalar(Matrix.square_matrix(hidden_gradient), 1 - beta2))
+				v.weights = Matrix.add(Matrix.scalar(v.weights, beta2), Matrix.scalar(Matrix.square_matrix(raw_weight_delta), 1 - beta2))
+				v.bias = Matrix.add(Matrix.scalar(v.bias, beta2), Matrix.scalar(Matrix.square_matrix(raw_gradients), 1 - beta2))
 
 				var m_hat_weights = Matrix.divide_matrix_by_scalar(m.weights, (1 - pow(beta1, t)))
 				var m_hat_bias = Matrix.divide_matrix_by_scalar(m.bias, (1 - pow(beta1, t)))
 				var v_hat_weights = Matrix.divide_matrix_by_scalar(v.weights, (1 - pow(beta2, t)))
 				var v_hat_bias = Matrix.divide_matrix_by_scalar(v.bias, (1 - pow(beta2, t)))
 
-				weight_delta = Matrix.multiply(m_hat_weights, Matrix.reciprocal(Matrix.add_scalar_to_matrix(Matrix.sqrt_matrix(v_hat_weights), epsilon)))
-				hidden_gradient = Matrix.multiply(m_hat_bias, Matrix.reciprocal(Matrix.add_scalar_to_matrix(Matrix.sqrt_matrix(v_hat_bias), epsilon)))
+				weight_delta = Matrix.scalar(Matrix.multiply(m_hat_weights, Matrix.reciprocal(Matrix.add_scalar_to_matrix(Matrix.sqrt_matrix(v_hat_weights), epsilon))), learning_rate)
+				hidden_gradient = Matrix.scalar(Matrix.multiply(m_hat_bias, Matrix.reciprocal(Matrix.add_scalar_to_matrix(Matrix.sqrt_matrix(v_hat_bias), epsilon))), learning_rate)
 
 				# Apply Adam updates to the weights and biases
 				network[layer_index].weights = Matrix.subtract(layer.weights, weight_delta)
@@ -324,18 +338,18 @@ func train(input_array: Array, target_array: Array) -> bool:
 	# Update the loss history
 	loss_history.append(loss)
 
-	# Calculate the smoothed loss using a moving average
-	var smoothed_loss: float = calculate_moving_average(loss_history, smoothing_window)
+	steps_completed += 1
 
-	# Early Stopping Logic
-	if early_stopping and steps_completed >= minimum_epochs:
+	# Calculate the smoothed loss using a moving average and check early stopping at frequency
+	if early_stopping and steps_completed >= minimum_epochs and steps_completed % check_frequency == 0:
+		var smoothed_loss: float = calculate_moving_average(loss_history, smoothing_window)
 		if best_loss == INF or (best_loss - smoothed_loss) / abs(best_loss) > improvement_threshold:
 			best_loss = smoothed_loss
 			epochs_without_improvement = 0
 			self.save(save_path)
 			print("Model saved at epoch:", steps_completed, "with smoothed loss:", smoothed_loss)
 		else:
-			epochs_without_improvement += 1
+			epochs_without_improvement += check_frequency  # Approximate since we check every freq
 			print("No significant improvement. Epochs without improvement:", epochs_without_improvement)
 
 		if epochs_without_improvement >= patience:
@@ -343,7 +357,6 @@ func train(input_array: Array, target_array: Array) -> bool:
 			print("Early stopping triggered. Restoring best model saved with loss:", best_loss)
 			self.load(save_path)
 
-	steps_completed += 1
 	return not has_stopped  # Continue training if early stopping hasn't been triggered
 
 # Function to calculate a moving average over a specified window size
